@@ -6,4 +6,4 @@ This is a university course project. The aim is to develop an Android app. We've
 
 ## Screenshot
 
-[![Logo](https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png)](https://www.google.com](https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBXFR1MGQiFhHc4D8kv2YePwEzyQOnbx90SfpK)
+![DartBud Logo](https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBXFR1MGQiFhHc4D8kv2YePwEzyQOnbx90SfpK)
