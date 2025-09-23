@@ -1,7 +1,7 @@
 # DartBud
 
 <img
-  src="https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBUHHeDuE4TEQKpdliFAWCav8qcBJNoV3uOhX0" 
+  src="https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBT8yUE8JLh1xBJdiUPZFqAYj7EGN6bstgXSk4"
   alt="DartBud Logo"
   width="400"
   height="400"
