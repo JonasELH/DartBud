@@ -6,4 +6,9 @@ This is a university course project. The aim is to develop an Android app. We've
 
 ## Screenshot
 
-![DartBud Logo](https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBXFR1MGQiFhHc4D8kv2YePwEzyQOnbx90SfpK)
+<img
+  src="https://upoevdcxa3.ufs.sh/f/IN4OjmY4wMHBXFR1MGQiFhHc4D8kv2YePwEzyQOnbx90SfpK"
+  alt="DartBud Logo"
+  width="500"
+  height="500"
+/>
