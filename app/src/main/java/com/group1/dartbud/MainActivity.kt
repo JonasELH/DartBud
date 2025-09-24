@@ -4,13 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.group1.dartbud.screens.GameSettingsScreen
 import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
@@ -44,9 +50,42 @@ fun DartBudApp() {
             composable("main_menu") {
                 MainMenuScreen(navController = navController)
             }
-            composable("rules") {
+            composable(
+                "rules",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(400)
+                    ) + fadeIn(animationSpec = tween(400))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(400)
+                    ) + fadeOut(animationSpec = tween(400))
+                }
+                ) {
                 RulesScreen(navController = navController)
             }
+
+            composable(
+                "game_settings",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
+                }
+                ) {
+                    GameSettingsScreen(navController = navController)
+            }
+
         }
     }
 }

@@ -40,7 +40,7 @@ fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) 
                 )
 
                 Button(
-                    onClick = { /* TODO: Navigate to game */ },
+                    onClick = { navController.navigate("game_settings") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
