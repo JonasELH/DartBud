@@ -4,13 +4,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.group1.dartbud.screens.MainMenuScreen
+import com.group1.dartbud.screens.RulesScreen
+import com.group1.dartbud.screens.LoginScreen
 import com.group1.dartbud.ui.theme.DartBudTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,72 +22,31 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DartBudTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainMenu(modifier = Modifier.padding(innerPadding))
-                }
+                DartBudApp()
             }
         }
     }
 }
 
 @Composable
-fun MainMenu(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+fun DartBudApp() {
+    val navController = rememberNavController()
+
+    Scaffold { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "login",
+            modifier = Modifier.padding(innerPadding)
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "DartBud",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Button(
-                    onClick = { /* TODO: Navigate to game */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Play Game")
-                }
-
-                Button(
-                    onClick = { /* TODO: Navigate to statistics */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Statistics")
-                }
-
-                Button(
-                    onClick = { /* TODO: Navigate to settings */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Settings")
-                }
-
-                OutlinedButton(
-                    onClick = { /* TODO: Show about dialog */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("About")
-                }
+            composable("login") {
+                LoginScreen(navController = navController)
+            }
+            composable("main_menu") {
+                MainMenuScreen(navController = navController)
+            }
+            composable("rules") {
+                RulesScreen(navController = navController)
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MainMenuPreview() {
-    DartBudTheme {
-        MainMenu()
     }
 }
