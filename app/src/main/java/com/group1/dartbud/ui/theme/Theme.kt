@@ -4,16 +4,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
-import com.group1.dartbud.ui.theme.DarkBackground
-import com.group1.dartbud.ui.theme.DarkError
-import com.group1.dartbud.ui.theme.DarkPrimary
-import com.group1.dartbud.ui.theme.DarkSecondary
-import com.group1.dartbud.ui.theme.DarkSurface
-import com.group1.dartbud.ui.theme.LightBackground
-import com.group1.dartbud.ui.theme.LightError
-import com.group1.dartbud.ui.theme.LightPrimary
-import com.group1.dartbud.ui.theme.LightSecondary
-import com.group1.dartbud.ui.theme.LightSurface
 
 private val LightColorScheme = lightColorScheme(
     primary = LightPrimary,

@@ -7,7 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -20,9 +19,7 @@ import com.group1.dartbud.screens.GameSettingsScreen
 import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
-import androidx.compose.material3.Typography
-import androidx.compose.material3.*
-import androidx.compose.ui.graphics.Color
+
 
 
 class MainActivity : ComponentActivity() {
