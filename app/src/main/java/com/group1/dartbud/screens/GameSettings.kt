@@ -25,7 +25,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.group1.dartbud.ui.theme.CustomPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +48,6 @@ fun GameSettingsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CustomPrimary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -262,13 +260,12 @@ fun GameSettingsScreen(navController: NavController) {
 
                         // Border
                         drawRoundRect(
-                            color = CustomPrimary.copy(alpha=0.5f),
+                            color = Color(0x80FC1E69),
                             cornerRadius = CornerRadius(35.dp.toPx()),
                             style = Stroke(width = 10.dp.toPx())
                         )
                     },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CustomPrimary,
                     contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(35.dp)

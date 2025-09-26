@@ -1,25 +1,26 @@
+package com.group1.dartbud.ui.theme
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
-import com.group1.dartbud.ui.theme.CustomBackground
-import com.group1.dartbud.ui.theme.CustomError
-import com.group1.dartbud.ui.theme.CustomPrimary
-import com.group1.dartbud.ui.theme.CustomSecondary
-import com.group1.dartbud.ui.theme.CustomSurface
-
-import com.group1.dartbud.ui.theme.CustomDarkBackground
-import com.group1.dartbud.ui.theme.CustomDarkError
-import com.group1.dartbud.ui.theme.CustomDarkPrimary
-import com.group1.dartbud.ui.theme.CustomDarkSecondary
-import com.group1.dartbud.ui.theme.CustomDarkSurface
+import com.group1.dartbud.ui.theme.DarkBackground
+import com.group1.dartbud.ui.theme.DarkError
+import com.group1.dartbud.ui.theme.DarkPrimary
+import com.group1.dartbud.ui.theme.DarkSecondary
+import com.group1.dartbud.ui.theme.DarkSurface
+import com.group1.dartbud.ui.theme.LightBackground
+import com.group1.dartbud.ui.theme.LightError
+import com.group1.dartbud.ui.theme.LightPrimary
+import com.group1.dartbud.ui.theme.LightSecondary
+import com.group1.dartbud.ui.theme.LightSurface
 
 private val LightColorScheme = lightColorScheme(
-    primary = CustomPrimary,
-    secondary = CustomSecondary,
-    background = CustomBackground,
-    surface = CustomSurface,
-    error = CustomError,
+    primary = LightPrimary,
+    secondary = LightSecondary,
+    background = LightBackground,
+    surface = LightSurface,
+    error = LightError,
     onPrimary = Color.White,
     onSecondary = Color.Black,
     onBackground = Color.Black,
@@ -27,11 +28,11 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = CustomDarkPrimary,
-    secondary = CustomDarkSecondary,
-    background = CustomDarkBackground,
-    surface = CustomDarkSurface,
-    error = CustomDarkError,
+    primary = DarkPrimary,
+    secondary = DarkSecondary,
+    background = DarkBackground,
+    surface = DarkSurface,
+    error = DarkError,
     onPrimary = Color.Black,
     onSecondary = Color.Black,
     onBackground = Color.White,
@@ -47,7 +48,7 @@ fun DartBudTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography,
+        typography = Typography(),
         content = content
     )
 }

@@ -13,53 +13,45 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.group1.dartbud.R
-import com.group1.dartbud.ui.theme.CustomBackground
 
 @Composable
 fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize()
-            .background(CustomBackground),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Card(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(0.dp)
-                .background(CustomBackground),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(0.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Image(
+                painter = painterResource(id = R.drawable.dartlogo),
+                contentDescription = "DartBud Logo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(2f),
+                contentScale = ContentScale.Crop
+            )
+
+            Button(
+                onClick = { navController.navigate("game_settings") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
             ) {
-                Image(
-                    painter = painterResource(id=R.drawable.dartlogo),
-                    contentDescription = "DartBud Logo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentScale = ContentScale.Fit
-                )
+                Text("Play Game")
+            }
 
-                Button(
-                    onClick = { navController.navigate("game_settings") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Play Game")
-                }
-
-                Button(
-                    onClick = { navController.navigate("rules") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Rules")
-                }
+            Button(
+                onClick = { navController.navigate("rules") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text("Rules")
             }
         }
     }
