@@ -6,13 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,7 +18,7 @@ import com.group1.dartbud.screens.GameSettingsScreen
 import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
-import com.group1.dartbud.ui.theme.DartBudTheme
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

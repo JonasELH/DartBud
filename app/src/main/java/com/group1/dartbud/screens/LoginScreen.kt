@@ -11,7 +11,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.group1.dartbud.R
-import com.group1.dartbud.ui.theme.DartBudTheme
 
 @Composable
 fun LoginScreen(navController: NavController) {
