@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Add
@@ -32,8 +33,6 @@ fun GameSettingsScreen(navController: NavController) {
     // State variables
     var player1 by remember { mutableStateOf<String?>(null) }
     var player2 by remember { mutableStateOf<String?>(null) }
-    var sets by remember { mutableStateOf(3) }
-    var legs by remember { mutableStateOf(5) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
 
@@ -44,7 +43,7 @@ fun GameSettingsScreen(navController: NavController) {
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
