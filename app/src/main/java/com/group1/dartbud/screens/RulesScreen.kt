@@ -44,8 +44,7 @@ fun RulesScreen(navController: NavController) {
 
             Text(
                 text = """
-                Welcome to DartBud! Here are the rules:
-
+                
                 🎯 OBJECTIVE
                 Score points by throwing darts at the dartboard and reduce your score from 501 to exactly 0.
 
@@ -56,8 +55,8 @@ fun RulesScreen(navController: NavController) {
                 • First player to reach exactly 0 wins
 
                 🏆 WINNING
-                • You must finish with a double (outer ring) or bullseye
-                • If you go below 0 or don't finish on a double, your turn is over and your score resets to what it was at the start of that turn
+                • Usually, you must finish with a double (outer ring) or bullseye. You get to choose this when you create a new game.
+                • If you go below 0 or don't finish on a double, your turn is over and your score resets to what it was at the start of that turn. This is called a bust.
 
                 📊 SCORING
                 • Outer ring = Double points
