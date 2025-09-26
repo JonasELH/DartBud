@@ -1,5 +1,11 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -15,12 +21,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.group1.dartbud.ui.theme.CustomPrimary
+import com.group1.dartbud.ui.theme.CustomSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,10 +50,6 @@ fun GameSettingsScreen(navController: NavController) {
     var legs by remember { mutableStateOf(5) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
-
-    // Fun colors
-    val pinkColor = Color(0xFFFF66C4)
-    val darkPink = Color(0xFFFF7BB3)
 
     Scaffold(
         topBar = {
@@ -50,7 +64,7 @@ fun GameSettingsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = pinkColor,
+                    containerColor = CustomSurface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -79,7 +93,7 @@ fun GameSettingsScreen(navController: NavController) {
                         .weight(1f)
                         .height(60.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = pinkColor,
+                        containerColor = CustomSurface,
                         contentColor = Color.Black
                     ),
                     shape = RoundedCornerShape(30.dp)
@@ -104,7 +118,7 @@ fun GameSettingsScreen(navController: NavController) {
                         .weight(1f)
                         .height(60.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = pinkColor,
+                        containerColor = CustomSurface,
                         contentColor = Color.Black
                     ),
                     shape = RoundedCornerShape(30.dp)
@@ -135,12 +149,6 @@ fun GameSettingsScreen(navController: NavController) {
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-
-
-
-
-                Spacer(modifier = Modifier.height(20.dp))
-
                 // Double In Setting
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -153,7 +161,7 @@ fun GameSettingsScreen(navController: NavController) {
                             .weight(1f)
                             .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = pinkColor,
+                            containerColor = CustomSurface,
                             contentColor = Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp)
@@ -169,8 +177,8 @@ fun GameSettingsScreen(navController: NavController) {
                         onClick = { doubleIn = !doubleIn },
                         modifier = Modifier.size(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (doubleIn) Color.Green else pinkColor,
-                            contentColor = Color.Black
+                            containerColor = if (doubleIn) Color.Green else CustomSurface,
+                            contentColor = if (doubleIn) Color.White else Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp),
                         contentPadding = PaddingValues(0.dp)
@@ -197,7 +205,7 @@ fun GameSettingsScreen(navController: NavController) {
                             .weight(1f)
                             .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = pinkColor,
+                            containerColor = CustomSurface,
                             contentColor = Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp)
@@ -213,8 +221,8 @@ fun GameSettingsScreen(navController: NavController) {
                         onClick = { doubleOut = !doubleOut },
                         modifier = Modifier.size(50.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (doubleOut) Color.Green else pinkColor,
-                            contentColor = Color.Black
+                            containerColor = if (doubleOut) Color.Green else CustomSurface,
+                            contentColor = if (doubleOut) Color.White else Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp),
                         contentPadding = PaddingValues(0.dp)
@@ -242,7 +250,7 @@ fun GameSettingsScreen(navController: NavController) {
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = pinkColor,
+                            containerColor = CustomSurface,
                             contentColor = Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp),
@@ -270,7 +278,7 @@ fun GameSettingsScreen(navController: NavController) {
                     Button(
                         onClick = { },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = pinkColor,
+                            containerColor = CustomSurface,
                             contentColor = Color.Black
                         ),
                         shape = RoundedCornerShape(25.dp),
@@ -287,26 +295,53 @@ fun GameSettingsScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(30.dp))
 
-            // Start Game Button
             Button(
                 onClick = {
                     // TODO: Start game
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp),
+                    .height(75.dp)
+                    .drawBehind {
+                        // Bottom shadow layer
+                        drawRoundRect(
+                            color = Color.Black.copy(alpha=0.25f),
+                            topLeft = Offset(0f,5.dp.toPx()),
+                            size = Size(size.width, size.height),
+                            cornerRadius = CornerRadius(35.dp.toPx())
+                        )
+                        // Border
+                        drawRoundRect(
+                            color = CustomPrimary.copy(alpha=0.5f),
+                            cornerRadius = CornerRadius(35.dp.toPx()),
+                            style = Stroke(width = 10.dp.toPx())
+                        )
+                    },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = pinkColor,
+                    containerColor = CustomSurface,
                     contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(35.dp)
             ) {
-                Text(
-                    "START GAME!!",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
+
+                    Text(
+                        "START GAME!!!",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        style = TextStyle(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                offset = Offset(2f, 2f),
+                                blurRadius = 4f
+                            )
+                        )
+                    )
+
             }
+
+
+
         }
     }
 }
