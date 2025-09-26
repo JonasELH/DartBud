@@ -64,7 +64,7 @@ fun GameSettingsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CustomSurface,
+                    containerColor = CustomPrimary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -92,10 +92,6 @@ fun GameSettingsScreen(navController: NavController) {
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CustomSurface,
-                        contentColor = Color.Black
-                    ),
                     shape = RoundedCornerShape(30.dp)
                 ) {
                     Icon(
@@ -117,10 +113,6 @@ fun GameSettingsScreen(navController: NavController) {
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CustomSurface,
-                        contentColor = Color.Black
-                    ),
                     shape = RoundedCornerShape(30.dp)
                 ) {
                     Icon(
@@ -144,6 +136,7 @@ fun GameSettingsScreen(navController: NavController) {
             ) {
                 Text(
                     "🎯 IN GAME SETTINGS:",
+
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -160,10 +153,6 @@ fun GameSettingsScreen(navController: NavController) {
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CustomSurface,
-                            contentColor = Color.Black
-                        ),
                         shape = RoundedCornerShape(25.dp)
                     ) {
                         Text(
@@ -176,10 +165,6 @@ fun GameSettingsScreen(navController: NavController) {
                     Button(
                         onClick = { doubleIn = !doubleIn },
                         modifier = Modifier.size(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (doubleIn) Color.Green else CustomSurface,
-                            contentColor = if (doubleIn) Color.White else Color.Black
-                        ),
                         shape = RoundedCornerShape(25.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
@@ -204,10 +189,7 @@ fun GameSettingsScreen(navController: NavController) {
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CustomSurface,
-                            contentColor = Color.Black
-                        ),
+
                         shape = RoundedCornerShape(25.dp)
                     ) {
                         Text(
@@ -220,10 +202,6 @@ fun GameSettingsScreen(navController: NavController) {
                     Button(
                         onClick = { doubleOut = !doubleOut },
                         modifier = Modifier.size(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (doubleOut) Color.Green else CustomSurface,
-                            contentColor = if (doubleOut) Color.White else Color.Black
-                        ),
                         shape = RoundedCornerShape(25.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
@@ -249,10 +227,6 @@ fun GameSettingsScreen(navController: NavController) {
                     Text("✗", color = Color.Red, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Button(
                         onClick = { },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CustomSurface,
-                            contentColor = Color.Black
-                        ),
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier.width(120.dp)
                     ) {
@@ -277,10 +251,7 @@ fun GameSettingsScreen(navController: NavController) {
                     Text("✗", color = Color.Red, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Button(
                         onClick = { },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CustomSurface,
-                            contentColor = Color.Black
-                        ),
+
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier.width(120.dp)
                     ) {
@@ -303,13 +274,7 @@ fun GameSettingsScreen(navController: NavController) {
                     .fillMaxWidth()
                     .height(75.dp)
                     .drawBehind {
-                        // Bottom shadow layer
-                        drawRoundRect(
-                            color = Color.Black.copy(alpha=0.25f),
-                            topLeft = Offset(0f,5.dp.toPx()),
-                            size = Size(size.width, size.height),
-                            cornerRadius = CornerRadius(35.dp.toPx())
-                        )
+
                         // Border
                         drawRoundRect(
                             color = CustomPrimary.copy(alpha=0.5f),
@@ -318,7 +283,7 @@ fun GameSettingsScreen(navController: NavController) {
                         )
                     },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CustomSurface,
+                    containerColor = CustomPrimary,
                     contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(35.dp)

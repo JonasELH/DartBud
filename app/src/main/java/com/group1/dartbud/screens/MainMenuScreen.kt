@@ -1,6 +1,7 @@
 package com.group1.dartbud.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.*
@@ -12,17 +13,20 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.group1.dartbud.R
+import com.group1.dartbud.ui.theme.CustomBackground
 
 @Composable
 fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
+            .background(CustomBackground),
         contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(0.dp),
+                .padding(0.dp)
+                .background(CustomBackground),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
