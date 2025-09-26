@@ -1,12 +1,19 @@
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.group1.dartbud.R
+
+// Definer Permanent Marker font family
+private val PermanentMarkerFontFamily = FontFamily(
+    Font(R.font.permanentmarker_regular, FontWeight.Normal)
+)
 
 val AppTypography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = PermanentMarkerFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,

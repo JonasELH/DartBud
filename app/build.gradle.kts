@@ -53,7 +53,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.4")
     // For animation:
     implementation("androidx.compose.animation:animation:1.5.4")
-    implementation(libs.androidx.compose.animation.core)
+    implementation("androidx.compose.animation:animation-core:1.5.4")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
