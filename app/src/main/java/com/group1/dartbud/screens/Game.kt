@@ -41,6 +41,17 @@ fun GameScreen(navController: NavController) {
     var inputValue by remember { mutableStateOf("") }
     var multiplier by remember { mutableStateOf(1) }
 
+    val currentInputScore = if (inputValue.isNotEmpty()) {
+        (inputValue.toIntOrNull() ?: 0) * multiplier
+    } else {
+        0
+    }
+    val isValidInput = if (inputValue.isEmpty()) {
+        true
+    } else {
+        currentInputScore in 1..180
+    }
+
     val roundTotal = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
 
     fun calculateCheckout(score: Int): String {
@@ -390,17 +401,27 @@ fun GameScreen(navController: NavController) {
                 )
 
                 Button(
-                    onClick = { confirmThrow() },
+                    onClick = {
+                        if (isValidInput) {
+                            confirmThrow()
+                        }
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(70.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
+                        containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
+                        else if (isValidInput) Color(0xFF4CAF50)
+                        else Color(0xFFFF0000),
+                        disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
+                        else Color(0xFF4CAF50)
                     ),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text(
-                        "✓",
+                        text = if (inputValue.isEmpty()) "✓"
+                        else if (isValidInput) "✓"
+                        else "✗",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -447,7 +468,7 @@ fun PlayerCard(
                             color = Color.White,
                             modifier = Modifier
                                 .padding(end = 4.dp)
-                                .offset(y = (-4).dp)
+                                .offset(y = (-2).dp)
                         )
                     }
                     Text(
