@@ -251,7 +251,7 @@ fun GameSettingsScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    // TODO: Start game
+                    navController.navigate("game")
                 },
                 modifier = Modifier
                     .fillMaxWidth()

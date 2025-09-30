@@ -1,6 +1,5 @@
 package com.group1.dartbud
 
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,8 +18,7 @@ import com.group1.dartbud.screens.GameSettingsScreen
 import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
-
-
+import com.group1.dartbud.screens.GameScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +31,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 fun DartBudApp() {
     val navController = rememberNavController()
@@ -63,7 +62,7 @@ fun DartBudApp() {
                         animationSpec = tween(400)
                     ) + fadeOut(animationSpec = tween(400))
                 }
-                ) {
+            ) {
                 RulesScreen(navController = navController)
             }
 
@@ -81,10 +80,27 @@ fun DartBudApp() {
                         animationSpec = tween(200)
                     ) + fadeOut(animationSpec = tween(200))
                 }
-                ) {
-                    GameSettingsScreen(navController = navController)
+            ) {
+                GameSettingsScreen(navController = navController)
             }
 
+            composable(
+                "game",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(300)
+                    ) + fadeIn(animationSpec = tween(300))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(300)
+                    ) + fadeOut(animationSpec = tween(300))
+                }
+            ) {
+                GameScreen(navController = navController)
+            }
         }
     }
 }
