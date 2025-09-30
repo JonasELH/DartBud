@@ -3,6 +3,8 @@ package com.group1.dartbud.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +36,7 @@ fun GameScreen(navController: NavController) {
     var throw2 by remember { mutableStateOf<Int?>(null) }
     var throw3 by remember { mutableStateOf<Int?>(null) }
     var currentThrow by remember { mutableStateOf(1) }
+    var overallRound by remember { mutableStateOf(1) }
 
     var inputValue by remember { mutableStateOf("") }
     var multiplier by remember { mutableStateOf(1) }
@@ -78,22 +81,33 @@ fun GameScreen(navController: NavController) {
                 // Apply round total to current player
                 val total = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
                 if (currentPlayer == 1) {
+                    val newDartsThrown = player1.dartsThrown + 3
+                    val totalScoreThrown = (501 - (player1.score - total))
+                    val newAverage = if (newDartsThrown > 0) totalScoreThrown.toDouble() / newDartsThrown * 3 else 0.0
+
                     player1 = player1.copy(
                         score = player1.score - total,
                         lastThrow = total,
                         roundsPlayed = player1.roundsPlayed + 1,
-                        dartsThrown = player1.dartsThrown + 3
+                        dartsThrown = newDartsThrown,
+                        average = newAverage
                     )
                 } else {
+                    val newDartsThrown = player2.dartsThrown + 3
+                    val totalScoreThrown = (501 - (player2.score - total))
+                    val newAverage = if (newDartsThrown > 0) totalScoreThrown.toDouble() / newDartsThrown * 3 else 0.0
+
                     player2 = player2.copy(
                         score = player2.score - total,
                         lastThrow = total,
                         roundsPlayed = player2.roundsPlayed + 1,
-                        dartsThrown = player2.dartsThrown + 3
+                        dartsThrown = newDartsThrown,
+                        average = newAverage
                     )
                 }
                 // Switch player
                 currentPlayer = if (currentPlayer == 1) 2 else 1
+                overallRound += 1
                 // Reset throws
                 throw1 = null
                 throw2 = null
@@ -108,6 +122,34 @@ fun GameScreen(navController: NavController) {
 
     fun undoLastThrow() {
         when (currentThrow) {
+            1 -> {
+                // If at start of turn, go back to previous player's last round
+                if (throw1 == null && throw2 == null && throw3 == null) {
+                    currentPlayer = if (currentPlayer == 1) 2 else 1
+                    val previousPlayer = if (currentPlayer == 1) player1 else player2
+
+                    // Restore previous player's score
+                    if (currentPlayer == 1 && player1.lastThrow > 0) {
+                        player1 = player1.copy(
+                            score = player1.score + player1.lastThrow,
+                            roundsPlayed = maxOf(0, player1.roundsPlayed - 1),
+                            dartsThrown = maxOf(0, player1.dartsThrown - 3)
+                        )
+                    } else if (currentPlayer == 2 && player2.lastThrow > 0) {
+                        player2 = player2.copy(
+                            score = player2.score + player2.lastThrow,
+                            roundsPlayed = maxOf(0, player2.roundsPlayed - 1),
+                            dartsThrown = maxOf(0, player2.dartsThrown - 3)
+                        )
+                    }
+
+                    // Set up to redo the throws (all empty for now)
+                    throw1 = null
+                    throw2 = null
+                    throw3 = null
+                    currentThrow = 1
+                }
+            }
             2 -> {
                 throw1 = null
                 currentThrow = 1
@@ -128,6 +170,18 @@ fun GameScreen(navController: NavController) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Back button
+        IconButton(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier.align(Alignment.Start)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Color(0xFF1A1A1A)
+            )
+        }
+
         // Player Cards Row
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -139,7 +193,8 @@ fun GameScreen(navController: NavController) {
                 isActive = currentPlayer == 1,
                 backgroundColor = if (currentPlayer == 1) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
                 modifier = Modifier.weight(1f),
-                checkout = calculateCheckout(player1.score)
+                checkout = calculateCheckout(player1.score),
+                roundNumber = overallRound
             )
 
             // Player 2 Card
@@ -148,7 +203,8 @@ fun GameScreen(navController: NavController) {
                 isActive = currentPlayer == 2,
                 backgroundColor = if (currentPlayer == 2) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
                 modifier = Modifier.weight(1f),
-                checkout = calculateCheckout(player2.score)
+                checkout = calculateCheckout(player2.score),
+                roundNumber = overallRound
             )
         }
 
@@ -174,17 +230,22 @@ fun GameScreen(navController: NavController) {
             )
         }
 
-        // Round Total
+        // Input Display
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 32.dp)
                 .background(Color(0xFF1A1A1A), RoundedCornerShape(25.dp))
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "ROUND TOTAL: $roundTotal",
-                fontSize = 20.sp,
+                text = if (inputValue.isNotEmpty() || multiplier > 1) {
+                    "Score: $inputValue ${if (multiplier > 1) "×$multiplier" else ""}"
+                } else {
+                    "Score: $roundTotal"
+                },
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -347,21 +408,6 @@ fun GameScreen(navController: NavController) {
                 }
             }
         }
-
-        // Current input display (optional)
-        if (inputValue.isNotEmpty() || multiplier > 1) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Input: $inputValue ${if (multiplier > 1) "×$multiplier" else ""}",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Gray
-                )
-            }
-        }
     }
 }
 
@@ -371,6 +417,7 @@ fun PlayerCard(
     isActive: Boolean,
     backgroundColor: Color,
     checkout: String,
+    roundNumber: Int,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -384,17 +431,32 @@ fun PlayerCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
+            Box(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (isActive) "→ ${player.name}" else player.name,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (isActive) {
+                        Text(
+                            text = "→",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .offset(y = (-4).dp)
+                        )
+                    }
+                    Text(
+                        text = player.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
 
             Text(
@@ -413,7 +475,9 @@ fun PlayerCard(
                     text = "LAST: ${player.lastThrow}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(
@@ -435,7 +499,7 @@ fun PlayerCard(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "ROUND\n${player.roundsPlayed}",
+                        text = "ROUND\n$roundNumber",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
