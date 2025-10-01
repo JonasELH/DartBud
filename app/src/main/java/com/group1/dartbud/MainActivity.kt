@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import com.group1.dartbud.ui.theme.DartBudTheme
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.group1.dartbud.screens.GameSettingsScreen
 import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
@@ -85,7 +87,11 @@ fun DartBudApp() {
             }
 
             composable(
-                "game",
+                route = "game/{doubleIn}/{doubleOut}",
+                arguments = listOf(
+                    navArgument("doubleIn") { type = NavType.BoolType },
+                    navArgument("doubleOut") { type = NavType.BoolType }
+                ),
                 enterTransition = {
                     slideInHorizontally(
                         initialOffsetX = { 1000 },
@@ -98,8 +104,14 @@ fun DartBudApp() {
                         animationSpec = tween(300)
                     ) + fadeOut(animationSpec = tween(300))
                 }
-            ) {
-                GameScreen(navController = navController)
+            ) { backStackEntry ->
+                val doubleIn = backStackEntry.arguments?.getBoolean("doubleIn") ?: false
+                val doubleOut = backStackEntry.arguments?.getBoolean("doubleOut") ?: true
+                GameScreen(
+                    navController = navController,
+                    doubleInEnabled = doubleIn,
+                    doubleOutEnabled = doubleOut
+                )
             }
         }
     }

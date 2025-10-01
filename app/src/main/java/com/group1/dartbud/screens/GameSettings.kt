@@ -1,12 +1,13 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -119,7 +120,6 @@ fun GameSettingsScreen(navController: NavController) {
             ) {
                 Text(
                     "🎯 IN GAME SETTINGS:",
-
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -145,16 +145,21 @@ fun GameSettingsScreen(navController: NavController) {
                         )
                     }
 
-                    Button(
+                    OutlinedButton(
                         onClick = { doubleIn = !doubleIn },
                         modifier = Modifier.size(50.dp),
                         shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White,
+                            contentColor = if (doubleIn) Color(0xFFFC1E69) else Color.Gray
+                        ),
+                        border = BorderStroke(2.dp, Color(0xFFFC1E69)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            if (doubleIn) "✓" else "✗",
+                            if (doubleIn) "✓" else "",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 32.sp
                         )
                     }
                 }
@@ -172,7 +177,6 @@ fun GameSettingsScreen(navController: NavController) {
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp),
-
                         shape = RoundedCornerShape(25.dp)
                     ) {
                         Text(
@@ -182,16 +186,21 @@ fun GameSettingsScreen(navController: NavController) {
                         )
                     }
 
-                    Button(
+                    OutlinedButton(
                         onClick = { doubleOut = !doubleOut },
                         modifier = Modifier.size(50.dp),
                         shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White,
+                            contentColor = if (doubleOut) Color(0xFFFC1E69) else Color.Gray
+                        ),
+                        border = BorderStroke(2.dp, Color(0xFFFC1E69)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            if (doubleOut) "✓" else "✗",
+                            if (doubleOut) "✓" else "",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 32.sp
                         )
                     }
                 }
@@ -206,8 +215,10 @@ fun GameSettingsScreen(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Player 1
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("✗", color = Color.Red, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = { },
                         shape = RoundedCornerShape(25.dp),
@@ -217,6 +228,21 @@ fun GameSettingsScreen(navController: NavController) {
                             player1 ?: "PLAYER 1",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
+                        )
+                    }
+
+                    // Remove button under player name
+                    TextButton(
+                        onClick = { player1 = null },
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        enabled = player1 != null
+                    ) {
+                        Text(
+                            "✗ Remove Player 1",
+                            fontSize = 11.sp,
+                            color = if (player1 != null) Color.Red else Color.Gray,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -230,11 +256,12 @@ fun GameSettingsScreen(navController: NavController) {
                 )
 
                 // Player 2
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("✗", color = Color.Red, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = { },
-
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier.width(120.dp)
                     ) {
@@ -244,6 +271,21 @@ fun GameSettingsScreen(navController: NavController) {
                             fontSize = 12.sp
                         )
                     }
+
+                    // Remove button under player name
+                    TextButton(
+                        onClick = { player2 = null },
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        enabled = player2 != null
+                    ) {
+                        Text(
+                            "✗ Remove Player 2",
+                            fontSize = 11.sp,
+                            color = if (player2 != null) Color.Red else Color.Gray,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 
@@ -251,13 +293,12 @@ fun GameSettingsScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    navController.navigate("game")
+                    navController.navigate("game/$doubleIn/$doubleOut")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(75.dp)
                     .drawBehind {
-
                         // Border
                         drawRoundRect(
                             color = Color(0x80FC1E69),
@@ -270,25 +311,20 @@ fun GameSettingsScreen(navController: NavController) {
                 ),
                 shape = RoundedCornerShape(35.dp)
             ) {
-
-                    Text(
-                        "START GAME!!!",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp,
-                        color = Color.White,
-                        style = TextStyle(
-                            shadow = Shadow(
-                                color = Color.Black.copy(alpha = 0.5f),
-                                offset = Offset(2f, 2f),
-                                blurRadius = 4f
-                            )
+                Text(
+                    "START GAME!!!",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                    color = Color.White,
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            offset = Offset(2f, 2f),
+                            blurRadius = 4f
                         )
                     )
-
+                )
             }
-
-
-
         }
     }
 }
