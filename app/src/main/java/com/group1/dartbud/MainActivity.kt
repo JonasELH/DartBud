@@ -1,5 +1,7 @@
 package com.group1.dartbud
 
+import com.group1.dartbud.screens.ManagePlayersScreen
+import com.group1.dartbud.screens.CreatePlayerScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -87,10 +89,61 @@ fun DartBudApp() {
             }
 
             composable(
-                route = "game/{doubleIn}/{doubleOut}",
+                "createPlayer",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
+                }
+            ) {
+                CreatePlayerScreen(navController = navController)
+            }
+
+            composable(
+                "managePlayers",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
+                }
+            ) {
+                // Hent savedPlayers fra GameSettingsScreen via savedStateHandle
+                val savedPlayersJson = navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>("savedPlayersList") ?: ""
+                val savedPlayers = if (savedPlayersJson.isNotEmpty()) {
+                    savedPlayersJson.split(",").filter { it.isNotBlank() }
+                } else {
+                    emptyList()
+                }
+
+                ManagePlayersScreen(
+                    navController = navController,
+                    savedPlayers = savedPlayers
+                )
+            }
+
+            composable(
+                route = "game/{doubleIn}/{doubleOut}/{player1Name}/{player2Name}",
                 arguments = listOf(
                     navArgument("doubleIn") { type = NavType.BoolType },
-                    navArgument("doubleOut") { type = NavType.BoolType }
+                    navArgument("doubleOut") { type = NavType.BoolType },
+                    navArgument("player1Name") { type = NavType.StringType },
+                    navArgument("player2Name") { type = NavType.StringType }
                 ),
                 enterTransition = {
                     slideInHorizontally(
@@ -107,10 +160,14 @@ fun DartBudApp() {
             ) { backStackEntry ->
                 val doubleIn = backStackEntry.arguments?.getBoolean("doubleIn") ?: false
                 val doubleOut = backStackEntry.arguments?.getBoolean("doubleOut") ?: true
+                val player1Name = backStackEntry.arguments?.getString("player1Name") ?: "PLAYER 1"
+                val player2Name = backStackEntry.arguments?.getString("player2Name") ?: "PLAYER 2"
                 GameScreen(
                     navController = navController,
                     doubleInEnabled = doubleIn,
-                    doubleOutEnabled = doubleOut
+                    doubleOutEnabled = doubleOut,
+                    player1Name = player1Name,
+                    player2Name = player2Name
                 )
             }
         }

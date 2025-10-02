@@ -10,8 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -35,6 +37,13 @@ fun GameSettingsScreen(navController: NavController) {
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
+
+    // Liste med lagrede spillere - bruker rememberSaveable for å bevare data
+    var savedPlayers by rememberSaveable { mutableStateOf(listOf<String>()) }
+
+    // Dropdown states
+    var expandedPlayer1 by remember { mutableStateOf(false) }
+    var expandedPlayer2 by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -65,35 +74,126 @@ fun GameSettingsScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Player Selection Buttons
+            // Player Selection Dropdowns
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Select Player Button
-                Button(
-                    onClick = { /* TODO: Show player selection */ },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    shape = RoundedCornerShape(30.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "SELECT PLAYER",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                // Select Player 1 Dropdown
+                Box(modifier = Modifier.weight(1f)) {
+                    Button(
+                        onClick = { expandedPlayer1 = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp),
+                        shape = RoundedCornerShape(30.dp),
+                        enabled = savedPlayers.isNotEmpty()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "SELECT PLAYER 1",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expandedPlayer1,
+                        onDismissRequest = { expandedPlayer1 = false }
+                    ) {
+                        Text(
+                            "Select Player 1",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        HorizontalDivider()
+                        savedPlayers.forEach { playerName ->
+                            DropdownMenuItem(
+                                text = { Text(playerName) },
+                                onClick = {
+                                    player1 = playerName
+                                    expandedPlayer1 = false
+                                }
+                            )
+                        }
+                    }
                 }
 
+                // Select Player 2 Dropdown
+                Box(modifier = Modifier.weight(1f)) {
+                    Button(
+                        onClick = { expandedPlayer2 = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp),
+                        shape = RoundedCornerShape(30.dp),
+                        enabled = savedPlayers.isNotEmpty()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "SELECT PLAYER 2",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = expandedPlayer2,
+                        onDismissRequest = { expandedPlayer2 = false }
+                    ) {
+                        Text(
+                            "Select Player 2",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        HorizontalDivider()
+                        savedPlayers.forEach { playerName ->
+                            DropdownMenuItem(
+                                text = { Text(playerName) },
+                                onClick = {
+                                    player2 = playerName
+                                    expandedPlayer2 = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Player Management Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 // Create Player Button
                 Button(
-                    onClick = { /* TODO: Navigate to create player */ },
+                    onClick = {
+                        navController.navigate("createPlayer")
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),
@@ -107,6 +207,26 @@ fun GameSettingsScreen(navController: NavController) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "CREATE PLAYER",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+
+                // Manage Players Button
+                Button(
+                    onClick = {
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("savedPlayersList", savedPlayers.joinToString(","))
+                        navController.navigate("managePlayers")
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp),
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Text(
+                        "MANAGE PLAYERS",
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -219,16 +339,30 @@ fun GameSettingsScreen(navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = { },
+                    Card(
+                        modifier = Modifier.width(if (player1 != null) 140.dp else 120.dp),
                         shape = RoundedCornerShape(25.dp),
-                        modifier = Modifier.width(120.dp)
-                    ) {
-                        Text(
-                            player1 ?: "PLAYER 1",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (player1 != null) 8.dp else 2.dp
+                        ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (player1 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
                         )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                player1 ?: "PLAYER 1",
+                                fontWeight = if (player1 != null) FontWeight.ExtraBold else FontWeight.Bold,
+                                fontSize = if (player1 != null) 16.sp else 12.sp,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
                     }
 
                     // Remove button under player name
@@ -260,16 +394,30 @@ fun GameSettingsScreen(navController: NavController) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
-                        onClick = { },
+                    Card(
+                        modifier = Modifier.width(if (player2 != null) 140.dp else 120.dp),
                         shape = RoundedCornerShape(25.dp),
-                        modifier = Modifier.width(120.dp)
-                    ) {
-                        Text(
-                            player2 ?: "PLAYER 2",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (player2 != null) 8.dp else 2.dp
+                        ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (player2 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
                         )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                player2 ?: "PLAYER 2",
+                                fontWeight = if (player2 != null) FontWeight.ExtraBold else FontWeight.Bold,
+                                fontSize = if (player2 != null) 16.sp else 12.sp,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
                     }
 
                     // Remove button under player name
@@ -293,7 +441,9 @@ fun GameSettingsScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    navController.navigate("game/$doubleIn/$doubleOut")
+                    val p1Name = player1 ?: "PLAYER 1"
+                    val p2Name = player2 ?: "PLAYER 2"
+                    navController.navigate("game/$doubleIn/$doubleOut/$p1Name/$p2Name")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -326,5 +476,38 @@ fun GameSettingsScreen(navController: NavController) {
                 )
             }
         }
+    }
+
+    // Håndter navigasjon tilbake fra CreatePlayerScreen
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getStateFlow<String?>("newPlayer", null)
+            ?.collect { newPlayerName ->
+                if (newPlayerName != null && newPlayerName !in savedPlayers) {
+                    savedPlayers = savedPlayers + newPlayerName
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("newPlayer", null as String?)
+                }
+            }
+    }
+
+    // Håndter sletting av spillere fra ManagePlayersScreen
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getStateFlow<String?>("deletePlayer", null)
+            ?.collect { playerToDelete ->
+                if (playerToDelete != null) {
+                    savedPlayers = savedPlayers.filter { it != playerToDelete }
+                    // Fjern spilleren fra player1/player2 hvis valgt
+                    if (player1 == playerToDelete) player1 = null
+                    if (player2 == playerToDelete) player2 = null
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("deletePlayer", null as String?)
+                }
+            }
     }
 }

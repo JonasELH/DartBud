@@ -33,10 +33,12 @@ data class Player(
 fun GameScreen(
     navController: NavController,
     doubleInEnabled: Boolean = false,
-    doubleOutEnabled: Boolean = true
+    doubleOutEnabled: Boolean = true,
+    player1Name: String = "PLAYER 1",
+    player2Name: String = "PLAYER 2"
 ) {
-    var player1 by remember { mutableStateOf(Player("PLAYER 1")) }
-    var player2 by remember { mutableStateOf(Player("PLAYER 2")) }
+    var player1 by remember { mutableStateOf(Player(player1Name)) }
+    var player2 by remember { mutableStateOf(Player(player2Name)) }
     var currentPlayer by remember { mutableStateOf(1) }
     var firstPlayer by remember { mutableStateOf(1) }
 
@@ -563,7 +565,7 @@ fun GameScreen(
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center
                     )
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Text(
                         "Average: ${String.format("%.1f", winner!!.average)}",
                         textAlign = TextAlign.Center
