@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -38,8 +39,13 @@ fun GameSettingsScreen(navController: NavController) {
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
 
-    // Liste med lagrede spillere - bruker rememberSaveable for å bevare data
-    var savedPlayers by rememberSaveable { mutableStateOf(listOf<String>()) }
+    // Liste med lagrede spillere - bruk rememberSaveable med custom saver
+    var savedPlayers by rememberSaveable(
+        stateSaver = listSaver<List<String>, String>(
+            save = { stateList -> stateList.toList() },
+            restore = { savedList -> savedList.toMutableList() }
+        )
+    ) { mutableStateOf(listOf<String>()) }
 
     // Dropdown states
     var expandedPlayer1 by remember { mutableStateOf(false) }
@@ -235,7 +241,7 @@ fun GameSettingsScreen(navController: NavController) {
 
             // Game Settings Section
             Column(
-                horizontalAlignment = Alignment.Start,
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -329,115 +335,157 @@ fun GameSettingsScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(20.dp))
 
             // VS Section
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Player 1
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Card(
-                        modifier = Modifier.width(if (player1 != null) 140.dp else 120.dp),
-                        shape = RoundedCornerShape(25.dp),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = if (player1 != null) 8.dp else 2.dp
-                        ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (player1 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
-                        )
+                    // Player 1
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 25.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                player1 ?: "PLAYER 1",
-                                fontWeight = if (player1 != null) FontWeight.ExtraBold else FontWeight.Bold,
-                                fontSize = if (player1 != null) 16.sp else 12.sp,
-                                color = Color.White,
-                                maxLines = 1
+                        Card(
+                            modifier = Modifier.width(if (player1 != null) 140.dp else 120.dp),
+                            shape = RoundedCornerShape(25.dp),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (player1 != null) 8.dp else 2.dp
+                            ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (player1 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    player1 ?: "PLAYER 1",
+                                    fontWeight = if (player1 != null) FontWeight.ExtraBold else FontWeight.Bold,
+                                    fontSize = if (player1 != null) 16.sp else 12.sp,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        // Remove button under player name
+                        TextButton(
+                            onClick = { player1 = null },
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            enabled = player1 != null
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "✗",
+                                    fontSize = 20.sp,
+                                    color = if (player1 != null) Color.Red else Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.offset(y = (-1).dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Remove Player 1",
+                                    fontSize = 11.sp,
+                                    color = if (player1 != null) Color.Red else Color.Gray,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
 
-                    // Remove button under player name
-                    TextButton(
-                        onClick = { player1 = null },
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        enabled = player1 != null
+                    // VS Text
+                    Box(
+                        modifier = Modifier
+                            .height(110.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "✗ Remove Player 1",
-                            fontSize = 11.sp,
-                            color = if (player1 != null) Color.Red else Color.Gray,
-                            fontWeight = FontWeight.Medium
+                            "VS",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
                         )
                     }
-                }
 
-                // VS Text
-                Text(
-                    "VS",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-
-                // Player 2
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Card(
-                        modifier = Modifier.width(if (player2 != null) 140.dp else 120.dp),
-                        shape = RoundedCornerShape(25.dp),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = if (player2 != null) 8.dp else 2.dp
-                        ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (player2 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
-                        )
+                    // Player 2
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 25.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                player2 ?: "PLAYER 2",
-                                fontWeight = if (player2 != null) FontWeight.ExtraBold else FontWeight.Bold,
-                                fontSize = if (player2 != null) 16.sp else 12.sp,
-                                color = Color.White,
-                                maxLines = 1
+                        Card(
+                            modifier = Modifier.width(if (player2 != null) 140.dp else 120.dp),
+                            shape = RoundedCornerShape(25.dp),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (player2 != null) 8.dp else 2.dp
+                            ),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (player2 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    player2 ?: "PLAYER 2",
+                                    fontWeight = if (player2 != null) FontWeight.ExtraBold else FontWeight.Bold,
+                                    fontSize = if (player2 != null) 16.sp else 12.sp,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                            }
                         }
-                    }
 
-                    // Remove button under player name
-                    TextButton(
-                        onClick = { player2 = null },
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        enabled = player2 != null
-                    ) {
-                        Text(
-                            "✗ Remove Player 2",
-                            fontSize = 11.sp,
-                            color = if (player2 != null) Color.Red else Color.Gray,
-                            fontWeight = FontWeight.Medium
-                        )
+                        // Remove button under player name
+                        TextButton(
+                            onClick = { player2 = null },
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            enabled = player2 != null
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    "✗",
+                                    fontSize = 20.sp,
+                                    color = if (player2 != null) Color.Red else Color.Gray,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.offset(y = (-1).dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Remove Player 2",
+                                    fontSize = 11.sp,
+                                    color = if (player2 != null) Color.Red else Color.Gray,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             Button(
                 onClick = {
@@ -484,8 +532,12 @@ fun GameSettingsScreen(navController: NavController) {
             ?.savedStateHandle
             ?.getStateFlow<String?>("newPlayer", null)
             ?.collect { newPlayerName ->
-                if (newPlayerName != null && newPlayerName !in savedPlayers) {
-                    savedPlayers = savedPlayers + newPlayerName
+                if (newPlayerName != null) {
+                    // Sjekk om spilleren allerede finnes
+                    if (newPlayerName !in savedPlayers) {
+                        savedPlayers = savedPlayers + newPlayerName
+                    }
+                    // Clear state etter å ha lagt til
                     navController.currentBackStackEntry
                         ?.savedStateHandle
                         ?.set("newPlayer", null as String?)
@@ -504,6 +556,7 @@ fun GameSettingsScreen(navController: NavController) {
                     // Fjern spilleren fra player1/player2 hvis valgt
                     if (player1 == playerToDelete) player1 = null
                     if (player2 == playerToDelete) player2 = null
+                    // Clear state
                     navController.currentBackStackEntry
                         ?.savedStateHandle
                         ?.set("deletePlayer", null as String?)

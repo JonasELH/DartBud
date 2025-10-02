@@ -602,8 +602,8 @@ fun GameScreen(
                                 currentPlayer = firstPlayer
 
                                 // Reset game
-                                player1 = Player("PLAYER 1")
-                                player2 = Player("PLAYER 2")
+                                player1 = Player(player1Name)
+                                player2 = Player(player2Name)
                                 overallRound = 1
                                 throw1 = null
                                 throw2 = null

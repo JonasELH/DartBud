@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -26,6 +25,9 @@ fun ManagePlayersScreen(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var playerToDelete by remember { mutableStateOf<String?>(null) }
+
+    // Hold liste av spillere lokalt slik at vi kan oppdatere den
+    var currentPlayers by remember { mutableStateOf(savedPlayers) }
 
     Scaffold(
         topBar = {
@@ -50,12 +52,33 @@ fun ManagePlayersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (savedPlayers.isEmpty()) {
+            // CREATE PLAYER knapp alltid synlig
+            Button(
+                onClick = { navController.navigate("createPlayer") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(30.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFC1E69)
+                )
+            ) {
+                Text(
+                    "CREATE NEW PLAYER",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+
+            if (currentPlayers.isEmpty()) {
                 // Vis melding hvis ingen spillere
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -73,28 +96,21 @@ fun ManagePlayersScreen(
                             fontSize = 14.sp,
                             color = Color.Gray
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { navController.navigate("createPlayer") },
-                            shape = RoundedCornerShape(25.dp)
-                        ) {
-                            Text("CREATE PLAYER")
-                        }
                     }
                 }
             } else {
                 // Vis liste med spillere
                 Text(
-                    "Saved Players (${savedPlayers.size})",
+                    "Saved Players (${currentPlayers.size})",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    fontWeight = FontWeight.Bold
                 )
 
                 LazyColumn(
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(savedPlayers) { playerName ->
+                    items(currentPlayers) { playerName ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(15.dp),
@@ -183,5 +199,29 @@ fun ManagePlayersScreen(
                 }
             }
         )
+    }
+
+    // Lytt etter nye spillere fra CreatePlayerScreen
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getStateFlow<String?>("newPlayer", null)
+            ?.collect { newPlayerName ->
+                if (newPlayerName != null && newPlayerName !in currentPlayers) {
+                    currentPlayers = currentPlayers + newPlayerName
+                    // Oppdater også savedPlayersList som GameSettings bruker
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("savedPlayersList", currentPlayers.joinToString(","))
+                    // Send også newPlayer videre til GameSettings
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("newPlayer", newPlayerName)
+                    // Clear state
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("newPlayer", null as String?)
+                }
+            }
     }
 }
