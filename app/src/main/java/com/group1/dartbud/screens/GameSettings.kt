@@ -39,7 +39,7 @@ fun GameSettingsScreen(navController: NavController) {
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
 
-    // Liste med lagrede spillere - bruk rememberSaveable med custom saver
+    // Liste med lagrede spillere - bruk rememberSaveable med custom saver fordi Database skal vi implementere senere
     var savedPlayers by rememberSaveable(
         stateSaver = listSaver<List<String>, String>(
             save = { stateList -> stateList.toList() },
@@ -54,8 +54,8 @@ fun GameSettingsScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Game Setup", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
+                title = { Text("Game Setup", fontWeight = FontWeight.Bold)  },
+                navigationIcon ={
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

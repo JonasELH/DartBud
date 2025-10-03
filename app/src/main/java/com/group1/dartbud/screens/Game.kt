@@ -224,14 +224,20 @@ fun GameScreen(
         val throwValue = value * multiplier
         val isDouble = multiplier == 2
 
-        // Double In sjekk - første scoring må være en double
         val activePlayer = if (currentPlayer == 1) player1 else player2
-        if (doubleInEnabled && !activePlayer.hasScored && !isDouble && throwValue > 0) {
-            bustMessage = "BUST! Must start with a double"
-            showBustDialog = true
-            inputValue = ""
-            multiplier = 1
-            return
+
+        // Double In sjekk - kun når spilleren faktisk prøver å score poeng (ikke 0)
+        if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0) {
+            // Sjekk om spilleren har fått double i noen av kastene i denne runden
+            val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
+
+            if (!hasDoubleInRound) {
+                bustMessage = "BUST! Must have a double to start scoring"
+                showBustDialog = true
+                inputValue = ""
+                multiplier = 1
+                return
+            }
         }
 
         when (currentThrow) {
@@ -241,11 +247,13 @@ fun GameScreen(
 
                 // Oppdater score etter første kast
                 if (currentPlayer == 1) {
-                    if (throwValue > 0) {
-                        player1 = player1.copy(hasScored = true)
-                    }
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
+
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
+                        player1 = player1.copy(hasScored = true)
+                    }
 
                     // Sjekk for vinner eller bust etter første kast
                     if (newScore == 0) {
@@ -266,11 +274,13 @@ fun GameScreen(
                         }
                     }
                 } else {
-                    if (throwValue > 0) {
-                        player2 = player2.copy(hasScored = true)
-                    }
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
+
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
+                        player2 = player2.copy(hasScored = true)
+                    }
 
                     // Sjekk for vinner eller bust etter første kast
                     if (newScore == 0) {
@@ -303,6 +313,11 @@ fun GameScreen(
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
 
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
+                        player1 = player1.copy(hasScored = true)
+                    }
+
                     // Sjekk for vinner eller bust etter andre kast
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
@@ -327,6 +342,11 @@ fun GameScreen(
                 } else {
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
+
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
+                        player2 = player2.copy(hasScored = true)
+                    }
 
                     // Sjekk for vinner eller bust etter andre kast
                     if (newScore == 0) {
@@ -364,6 +384,11 @@ fun GameScreen(
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
 
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
+                        player1 = player1.copy(hasScored = true)
+                    }
+
                     val (isBust, message) = checkBust(newScore, 0, throw3WasDouble, throwValue)
 
                     if (isBust) {
@@ -391,6 +416,11 @@ fun GameScreen(
                     // Oppdater score etter tredje kast
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
+
+                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
+                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
+                        player2 = player2.copy(hasScored = true)
+                    }
 
                     val (isBust, message) = checkBust(newScore, 0, throw3WasDouble, throwValue)
 
