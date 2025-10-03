@@ -39,7 +39,7 @@ fun GameSettingsScreen(navController: NavController) {
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
 
-    // Liste med lagrede spillere - bruk rememberSaveable med custom saver fordi Database skal vi implementere senere
+    // Liste med lagrede spillere - bruk rememberSaveable med custom saver
     var savedPlayers by rememberSaveable(
         stateSaver = listSaver<List<String>, String>(
             save = { stateList -> stateList.toList() },
@@ -54,8 +54,8 @@ fun GameSettingsScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Game Setup", fontWeight = FontWeight.Bold)  },
-                navigationIcon ={
+                title = { Text("Game Setup", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -560,6 +560,36 @@ fun GameSettingsScreen(navController: NavController) {
                     navController.currentBackStackEntry
                         ?.savedStateHandle
                         ?.set("deletePlayer", null as String?)
+                }
+            }
+    }
+
+    // Håndter redigering av spillere fra ManagePlayersScreen
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.getStateFlow<String?>("editedPlayer", null)
+            ?.collect { editedPlayerInfo ->
+                if (editedPlayerInfo != null) {
+                    val parts = editedPlayerInfo.split("|")
+                    if (parts.size == 2) {
+                        val oldName = parts[0]
+                        val newName = parts[1]
+
+                        // Oppdater spillerlisten
+                        savedPlayers = savedPlayers.map {
+                            if (it == oldName) newName else it
+                        }
+
+                        // Oppdater valgte spillere hvis nødvendig
+                        if (player1 == oldName) player1 = newName
+                        if (player2 == oldName) player2 = newName
+                    }
+
+                    // Clear state
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("editedPlayer", null as String?)
                 }
             }
     }

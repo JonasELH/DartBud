@@ -7,12 +7,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -25,6 +27,10 @@ fun ManagePlayersScreen(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var playerToDelete by remember { mutableStateOf<String?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var playerToEdit by remember { mutableStateOf<String?>(null) }
+    var editedPlayerName by remember { mutableStateOf("") }
+    var showEditError by remember { mutableStateOf(false) }
 
     // Hold liste av spillere lokalt slik at vi kan oppdatere den
     var currentPlayers by remember { mutableStateOf(savedPlayers) }
@@ -132,17 +138,35 @@ fun ManagePlayersScreen(
                                     fontWeight = FontWeight.Medium
                                 )
 
-                                IconButton(
-                                    onClick = {
-                                        playerToDelete = playerName
-                                        showDeleteDialog = true
-                                    }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete $playerName",
-                                        tint = Color.Red
-                                    )
+                                    IconButton(
+                                        onClick = {
+                                            playerToEdit = playerName
+                                            editedPlayerName = playerName
+                                            showEditDialog = true
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit $playerName",
+                                            tint = Color(0xFFFC1E69)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            playerToDelete = playerName
+                                            showDeleteDialog = true
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete $playerName",
+                                            tint = Color.Red
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -193,6 +217,99 @@ fun ManagePlayersScreen(
                     onClick = {
                         showDeleteDialog = false
                         playerToDelete = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Edit dialog
+    if (showEditDialog && playerToEdit != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showEditDialog = false
+                playerToEdit = null
+                editedPlayerName = ""
+                showEditError = false
+            },
+            title = {
+                Text(
+                    "Edit Player Name",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editedPlayerName,
+                        onValueChange = {
+                            editedPlayerName = it
+                            showEditError = false
+                        },
+                        label = { Text("Player Name") },
+                        singleLine = true,
+                        isError = showEditError,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+
+                    if (showEditError) {
+                        Text(
+                            "Please enter a valid name",
+                            color = Color.Red,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmedName = editedPlayerName.trim()
+                        if (trimmedName.isBlank()) {
+                            showEditError = true
+                        } else if (trimmedName != playerToEdit && trimmedName in currentPlayers) {
+                            showEditError = true
+                        } else {
+                            // Oppdater spillerlisten
+                            currentPlayers = currentPlayers.map {
+                                if (it == playerToEdit) trimmedName else it
+                            }
+
+                            // Send oppdatert liste tilbake til GameSettings
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("savedPlayersList", currentPlayers.joinToString(","))
+
+                            // Send edit-info tilbake
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("editedPlayer", "$playerToEdit|$trimmedName")
+
+                            showEditDialog = false
+                            playerToEdit = null
+                            editedPlayerName = ""
+                            showEditError = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFC1E69)
+                    )
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showEditDialog = false
+                        playerToEdit = null
+                        editedPlayerName = ""
+                        showEditError = false
                     }
                 ) {
                     Text("Cancel")
