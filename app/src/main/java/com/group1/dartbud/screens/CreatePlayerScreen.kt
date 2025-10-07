@@ -1,5 +1,6 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,9 +17,7 @@ import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreatePlayerScreen(
-    navController: NavController
-) {
+fun CreatePlayerScreen(navController: NavController) {
     var playerName by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
 
@@ -35,6 +34,7 @@ fun CreatePlayerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A1A1A),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -44,6 +44,7 @@ fun CreatePlayerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
                 .padding(innerPadding)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -80,7 +81,6 @@ fun CreatePlayerScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -107,10 +107,10 @@ fun CreatePlayerScreen(
                         if (playerName.isBlank()) {
                             showError = true
                         } else {
-                            // Send spillernavn tilbake via savedStateHandle
+                            val trimmedName = playerName.trim()
                             navController.previousBackStackEntry
                                 ?.savedStateHandle
-                                ?.set("newPlayer", playerName.trim())
+                                ?.set("newPlayerFromCreate", trimmedName)
                             navController.popBackStack()
                         }
                     },

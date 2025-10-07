@@ -1,5 +1,6 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,33 +15,46 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManagePlayersScreen(
-    navController: NavController,
-    savedPlayers: List<String>
-) {
+fun ManagePlayersScreen(navController: NavController) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var playerToDelete by remember { mutableStateOf<String?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     var playerToEdit by remember { mutableStateOf<String?>(null) }
     var editedPlayerName by remember { mutableStateOf("") }
     var showEditError by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var newPlayerName by remember { mutableStateOf("") }
+    var showCreateError by remember { mutableStateOf(false) }
+    var currentPlayers by remember { mutableStateOf(listOf<String>()) }
 
-    // Hold liste av spillere lokalt slik at vi kan oppdatere den
-    var currentPlayers by remember { mutableStateOf(savedPlayers) }
+    // Hent listen når vi kommer hit
+    LaunchedEffect(Unit) {
+        val savedPlayersString = navController.previousBackStackEntry
+            ?.savedStateHandle
+            ?.get<String>("savedPlayersList") ?: ""
+        if (savedPlayersString.isNotEmpty()) {
+            currentPlayers = savedPlayersString.split(",").filter { it.isNotBlank() }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Manage Players", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        // Send listen tilbake når vi går tilbake
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("updatedPlayersList", currentPlayers.joinToString(","))
+                        navController.popBackStack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -48,6 +62,7 @@ fun ManagePlayersScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A1A1A),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -57,13 +72,17 @@ fun ManagePlayersScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
                 .padding(innerPadding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // CREATE PLAYER knapp alltid synlig
             Button(
-                onClick = { navController.navigate("createPlayer") },
+                onClick = {
+                    newPlayerName = ""
+                    showCreateError = false
+                    showCreateDialog = true
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
@@ -80,7 +99,6 @@ fun ManagePlayersScreen(
             }
 
             if (currentPlayers.isEmpty()) {
-                // Vis melding hvis ingen spillere
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -105,7 +123,6 @@ fun ManagePlayersScreen(
                     }
                 }
             } else {
-                // Vis liste med spillere
                 Text(
                     "Saved Players (${currentPlayers.size})",
                     fontSize = 18.sp,
@@ -121,7 +138,7 @@ fun ManagePlayersScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(15.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFF5F5F5)
+                                containerColor = Color.White
                             ),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
@@ -176,38 +193,83 @@ fun ManagePlayersScreen(
         }
     }
 
-    // Delete confirmation dialog
+    // Create Player Dialog - NY!
+    if (showCreateDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCreateDialog = false
+                newPlayerName = ""
+                showCreateError = false
+            },
+            title = { Text("Create New Player", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newPlayerName,
+                        onValueChange = {
+                            newPlayerName = it
+                            showCreateError = false
+                        },
+                        label = { Text("Player Name") },
+                        singleLine = true,
+                        isError = showCreateError,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    if (showCreateError) {
+                        Text("Please enter a valid name", color = Color.Red, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val trimmedName = newPlayerName.trim()
+                        if (trimmedName.isBlank() || trimmedName in currentPlayers) {
+                            showCreateError = true
+                        } else {
+                            currentPlayers = currentPlayers + trimmedName
+                            newPlayerName = ""
+                            showCreateError = false
+                            showCreateDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCreateDialog = false
+                        newPlayerName = ""
+                        showCreateError = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Delete Dialog
     if (showDeleteDialog && playerToDelete != null) {
         AlertDialog(
             onDismissRequest = {
                 showDeleteDialog = false
                 playerToDelete = null
             },
-            title = {
-                Text(
-                    "Delete Player?",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text("Are you sure you want to delete \"$playerToDelete\"? This action cannot be undone.")
-            },
+            title = { Text("Delete Player?", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete \"$playerToDelete\"? This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
-                        // Send spillernavn tilbake via savedStateHandle
-                        playerToDelete?.let { name ->
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("deletePlayer", name)
-                        }
+                        currentPlayers = currentPlayers.filter { it != playerToDelete }
                         showDeleteDialog = false
                         playerToDelete = null
-                        navController.popBackStack()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                 ) {
                     Text("Delete")
                 }
@@ -225,7 +287,7 @@ fun ManagePlayersScreen(
         )
     }
 
-    // Edit dialog
+    // Edit Dialog
     if (showEditDialog && playerToEdit != null) {
         AlertDialog(
             onDismissRequest = {
@@ -234,16 +296,9 @@ fun ManagePlayersScreen(
                 editedPlayerName = ""
                 showEditError = false
             },
-            title = {
-                Text(
-                    "Edit Player Name",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            title = { Text("Edit Player Name", fontWeight = FontWeight.Bold) },
             text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = editedPlayerName,
                         onValueChange = {
@@ -256,13 +311,8 @@ fun ManagePlayersScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(15.dp)
                     )
-
                     if (showEditError) {
-                        Text(
-                            "Please enter a valid name",
-                            color = Color.Red,
-                            fontSize = 12.sp
-                        )
+                        Text("Please enter a valid name", color = Color.Red, fontSize = 12.sp)
                     }
                 }
             },
@@ -270,35 +320,17 @@ fun ManagePlayersScreen(
                 Button(
                     onClick = {
                         val trimmedName = editedPlayerName.trim()
-                        if (trimmedName.isBlank()) {
-                            showEditError = true
-                        } else if (trimmedName != playerToEdit && trimmedName in currentPlayers) {
+                        if (trimmedName.isBlank() || (trimmedName != playerToEdit && trimmedName in currentPlayers)) {
                             showEditError = true
                         } else {
-                            // Oppdater spillerlisten
-                            currentPlayers = currentPlayers.map {
-                                if (it == playerToEdit) trimmedName else it
-                            }
-
-                            // Send oppdatert liste tilbake til GameSettings
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("savedPlayersList", currentPlayers.joinToString(","))
-
-                            // Send edit-info tilbake
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("editedPlayer", "$playerToEdit|$trimmedName")
-
+                            currentPlayers = currentPlayers.map { if (it == playerToEdit) trimmedName else it }
                             showEditDialog = false
                             playerToEdit = null
                             editedPlayerName = ""
                             showEditError = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFC1E69)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFC1E69))
                 ) {
                     Text("Save")
                 }
@@ -316,29 +348,5 @@ fun ManagePlayersScreen(
                 }
             }
         )
-    }
-
-    // Lytt etter nye spillere fra CreatePlayerScreen
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntry
-            ?.savedStateHandle
-            ?.getStateFlow<String?>("newPlayer", null)
-            ?.collect { newPlayerName ->
-                if (newPlayerName != null && newPlayerName !in currentPlayers) {
-                    currentPlayers = currentPlayers + newPlayerName
-                    // Oppdater også savedPlayersList som GameSettings bruker
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("savedPlayersList", currentPlayers.joinToString(","))
-                    // Send også newPlayer videre til GameSettings
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("newPlayer", newPlayerName)
-                    // Clear state
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("newPlayer", null as String?)
-                }
-            }
     }
 }

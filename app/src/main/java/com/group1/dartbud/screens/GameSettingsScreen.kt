@@ -1,6 +1,7 @@
 package com.group1.dartbud.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,12 +10,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -33,23 +31,33 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameSettingsScreen(navController: NavController) {
-    // State variables
     var player1 by remember { mutableStateOf<String?>(null) }
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
-
-    // Liste med lagrede spillere - bruk rememberSaveable med custom saver
-    var savedPlayers by rememberSaveable(
-        stateSaver = listSaver<List<String>, String>(
-            save = { stateList -> stateList.toList() },
-            restore = { savedList -> savedList.toMutableList() }
-        )
-    ) { mutableStateOf(listOf<String>()) }
-
-    // Dropdown states
+    var savedPlayers by remember { mutableStateOf(listOf<String>()) }
     var expandedPlayer1 by remember { mutableStateOf(false) }
     var expandedPlayer2 by remember { mutableStateOf(false) }
+
+    // Lytt etter oppdatert liste fra ManagePlayersScreen
+    val updatedPlayersListFromManage = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow<String?>("updatedPlayersList", null)
+        ?.collectAsState()
+
+    LaunchedEffect(updatedPlayersListFromManage?.value) {
+        val playersString = updatedPlayersListFromManage?.value
+        if (playersString != null && playersString.isNotEmpty()) {
+            val newPlayers = playersString.split(",").filter { it.isNotBlank() }
+            if (newPlayers.isNotEmpty()) {
+                savedPlayers = newPlayers
+            }
+            // Reset verdien
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set("updatedPlayersList", null as String?)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -64,6 +72,7 @@ fun GameSettingsScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A1A1A),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -73,19 +82,17 @@ fun GameSettingsScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
                 .padding(innerPadding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // Player Selection Dropdowns
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Select Player 1 Dropdown
                 Box(modifier = Modifier.weight(1f)) {
                     Button(
                         onClick = { expandedPlayer1 = true },
@@ -113,7 +120,6 @@ fun GameSettingsScreen(navController: NavController) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-
                     DropdownMenu(
                         expanded = expandedPlayer1,
                         onDismissRequest = { expandedPlayer1 = false }
@@ -136,8 +142,6 @@ fun GameSettingsScreen(navController: NavController) {
                         }
                     }
                 }
-
-                // Select Player 2 Dropdown
                 Box(modifier = Modifier.weight(1f)) {
                     Button(
                         onClick = { expandedPlayer2 = true },
@@ -165,7 +169,6 @@ fun GameSettingsScreen(navController: NavController) {
                             modifier = Modifier.size(20.dp)
                         )
                     }
-
                     DropdownMenu(
                         expanded = expandedPlayer2,
                         onDismissRequest = { expandedPlayer2 = false }
@@ -190,56 +193,29 @@ fun GameSettingsScreen(navController: NavController) {
                 }
             }
 
-            // Player Management Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Manage Players knapp - nå den eneste måten å håndtere spillere
+            Button(
+                onClick = {
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("savedPlayersList", savedPlayers.joinToString(","))
+                    navController.navigate("managePlayers")
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(30.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFC1E69)
+                )
             ) {
-                // Create Player Button
-                Button(
-                    onClick = {
-                        navController.navigate("createPlayer")
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    shape = RoundedCornerShape(30.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "CREATE PLAYER",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
-
-                // Manage Players Button
-                Button(
-                    onClick = {
-                        navController.currentBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("savedPlayersList", savedPlayers.joinToString(","))
-                        navController.navigate("managePlayers")
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    shape = RoundedCornerShape(30.dp)
-                ) {
-                    Text(
-                        "MANAGE PLAYERS",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    "MANAGE PLAYERS",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
 
-            // Game Settings Section
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -250,8 +226,6 @@ fun GameSettingsScreen(navController: NavController) {
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-
-                // Double In Setting
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -270,11 +244,10 @@ fun GameSettingsScreen(navController: NavController) {
                             fontSize = 14.sp
                         )
                     }
-
                     OutlinedButton(
                         onClick = { doubleIn = !doubleIn },
-                        modifier = Modifier.size(50.dp),
-                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = Color.White,
                             contentColor = if (doubleIn) Color(0xFFFC1E69) else Color.Gray
@@ -285,14 +258,11 @@ fun GameSettingsScreen(navController: NavController) {
                         Text(
                             if (doubleIn) "✓" else "",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp
+                            fontSize = 18.sp
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(12.dp))
-
-                // Double Out Setting
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -311,11 +281,10 @@ fun GameSettingsScreen(navController: NavController) {
                             fontSize = 14.sp
                         )
                     }
-
                     OutlinedButton(
                         onClick = { doubleOut = !doubleOut },
-                        modifier = Modifier.size(50.dp),
-                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = Color.White,
                             contentColor = if (doubleOut) Color(0xFFFC1E69) else Color.Gray
@@ -326,15 +295,12 @@ fun GameSettingsScreen(navController: NavController) {
                         Text(
                             if (doubleOut) "✓" else "",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp
+                            fontSize = 18.sp
                         )
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(20.dp))
-
-            // VS Section
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -345,7 +311,6 @@ fun GameSettingsScreen(navController: NavController) {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Player 1
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -377,8 +342,6 @@ fun GameSettingsScreen(navController: NavController) {
                                 )
                             }
                         }
-
-                        // Remove button under player name
                         TextButton(
                             onClick = { player1 = null },
                             modifier = Modifier.height(32.dp),
@@ -406,11 +369,8 @@ fun GameSettingsScreen(navController: NavController) {
                             }
                         }
                     }
-
-                    // VS Text
                     Box(
-                        modifier = Modifier
-                            .height(110.dp),
+                        modifier = Modifier.height(110.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -420,8 +380,6 @@ fun GameSettingsScreen(navController: NavController) {
                             textAlign = TextAlign.Center
                         )
                     }
-
-                    // Player 2
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -453,8 +411,6 @@ fun GameSettingsScreen(navController: NavController) {
                                 )
                             }
                         }
-
-                        // Remove button under player name
                         TextButton(
                             onClick = { player2 = null },
                             modifier = Modifier.height(32.dp),
@@ -484,9 +440,7 @@ fun GameSettingsScreen(navController: NavController) {
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
+            Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = {
                     val p1Name = player1 ?: "PLAYER 1"
@@ -497,7 +451,6 @@ fun GameSettingsScreen(navController: NavController) {
                     .fillMaxWidth()
                     .height(75.dp)
                     .drawBehind {
-                        // Border
                         drawRoundRect(
                             color = Color(0x80FC1E69),
                             cornerRadius = CornerRadius(35.dp.toPx()),
@@ -524,73 +477,5 @@ fun GameSettingsScreen(navController: NavController) {
                 )
             }
         }
-    }
-
-    // Håndter navigasjon tilbake fra CreatePlayerScreen
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntry
-            ?.savedStateHandle
-            ?.getStateFlow<String?>("newPlayer", null)
-            ?.collect { newPlayerName ->
-                if (newPlayerName != null) {
-                    // Sjekk om spilleren allerede finnes
-                    if (newPlayerName !in savedPlayers) {
-                        savedPlayers = savedPlayers + newPlayerName
-                    }
-                    // Clear state etter å ha lagt til
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("newPlayer", null as String?)
-                }
-            }
-    }
-
-    // Håndter sletting av spillere fra ManagePlayersScreen
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntry
-            ?.savedStateHandle
-            ?.getStateFlow<String?>("deletePlayer", null)
-            ?.collect { playerToDelete ->
-                if (playerToDelete != null) {
-                    savedPlayers = savedPlayers.filter { it != playerToDelete }
-                    // Fjern spilleren fra player1/player2 hvis valgt
-                    if (player1 == playerToDelete) player1 = null
-                    if (player2 == playerToDelete) player2 = null
-                    // Clear state
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("deletePlayer", null as String?)
-                }
-            }
-    }
-
-    // Håndter redigering av spillere fra ManagePlayersScreen
-    LaunchedEffect(Unit) {
-        navController.currentBackStackEntry
-            ?.savedStateHandle
-            ?.getStateFlow<String?>("editedPlayer", null)
-            ?.collect { editedPlayerInfo ->
-                if (editedPlayerInfo != null) {
-                    val parts = editedPlayerInfo.split("|")
-                    if (parts.size == 2) {
-                        val oldName = parts[0]
-                        val newName = parts[1]
-
-                        // Oppdater spillerlisten
-                        savedPlayers = savedPlayers.map {
-                            if (it == oldName) newName else it
-                        }
-
-                        // Oppdater valgte spillere hvis nødvendig
-                        if (player1 == oldName) player1 = newName
-                        if (player2 == oldName) player2 = newName
-                    }
-
-                    // Clear state
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("editedPlayer", null as String?)
-                }
-            }
     }
 }

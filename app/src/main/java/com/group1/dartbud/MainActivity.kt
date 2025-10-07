@@ -121,19 +121,8 @@ fun DartBudApp() {
                     ) + fadeOut(animationSpec = tween(200))
                 }
             ) {
-                // Hent savedPlayers fra GameSettingsScreen via savedStateHandle
-                val savedPlayersJson = navController.previousBackStackEntry
-                    ?.savedStateHandle
-                    ?.get<String>("savedPlayersList") ?: ""
-                val savedPlayers = if (savedPlayersJson.isNotEmpty()) {
-                    savedPlayersJson.split(",").filter { it.isNotBlank() }
-                } else {
-                    emptyList()
-                }
-
                 ManagePlayersScreen(
-                    navController = navController,
-                    savedPlayers = savedPlayers
+                    navController = navController
                 )
             }
 
