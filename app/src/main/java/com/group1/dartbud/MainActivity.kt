@@ -27,6 +27,7 @@ import com.group1.dartbud.screens.LoginScreen
 import com.group1.dartbud.screens.GameScreen
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.GameViewModel
+import com.group1.dartbud.viewmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +46,7 @@ fun DartBudApp() {
     val navController = rememberNavController()
     val playerViewModel: PlayerViewModel = viewModel()
     val gameViewModel: GameViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel()
 
     Scaffold { innerPadding ->
         NavHost(
@@ -53,7 +55,10 @@ fun DartBudApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("login") {
-                LoginScreen(navController = navController)
+                LoginScreen(
+                    navController = navController,
+                    authViewModel = authViewModel
+                )
             }
             composable("main_menu") {
                 MainMenuScreen(navController = navController)

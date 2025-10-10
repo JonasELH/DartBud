@@ -33,7 +33,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("YOUR_WEB_CLIENT_ID") // Vi må finne denne!
+            .requestIdToken("1047061559331-kfn5bcu39rg20dpjphgnk996bm9t335p.apps.googleusercontent.com")
             .requestEmail()
             .build()
 

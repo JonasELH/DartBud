@@ -1,19 +1,67 @@
 package com.group1.dartbud.screens
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.group1.dartbud.R
+import com.group1.dartbud.viewmodel.AuthState
+import com.group1.dartbud.viewmodel.AuthViewModel
 
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
+
+    // Google Sign-In launcher
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                authViewModel.signInWithGoogle(account)
+            } catch (e: ApiException) {
+                println("Google Sign-In failed: ${e.message}")
+            }
+        }
+    }
+
+    // Naviger automatisk hvis allerede innlogget
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            navController.navigate("main_menu") {
+                popUpTo("login") { inclusive = true }
+            }
+        }
+    }
+
+    // Naviger når innlogging er vellykket
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Success) {
+            navController.navigate("main_menu") {
+                popUpTo("login") { inclusive = true }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -27,7 +75,6 @@ fun LoginScreen(navController: NavController) {
                 .padding(16.dp)
                 .padding(bottom = 40.dp)
         ) {
-            // Image is now INSIDE the Column
             Image(
                 painter = painterResource(id = R.drawable.dartlogo),
                 contentDescription = "DartBud Logo",
@@ -42,22 +89,46 @@ fun LoginScreen(navController: NavController) {
                 style = MaterialTheme.typography.headlineMedium
             )
 
+            // Loading indicator
+            if (authState is AuthState.Loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            // Error message
+            if (authState is AuthState.Error) {
+                Text(
+                    text = (authState as AuthState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+
             Button(
-                onClick = { /* Google login */ },
+                onClick = {
+                    val signInIntent = authViewModel.getGoogleSignInClient(context).signInIntent
+                    launcher.launch(signInIntent)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(56.dp),
+                enabled = authState !is AuthState.Loading
             ) {
                 Text("Log in with Google")
             }
 
             OutlinedButton(
-                onClick = { navController.navigate("main_menu") },
+                onClick = {
+                    navController.navigate("main_menu") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Text("Continue as Guest (will disappear)")
+                Text("Continue as Guest")
             }
         }
     }

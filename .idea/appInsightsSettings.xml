@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.group1.dartbud" />
+                  <option name="mobileSdkAppId" value="1:1047061559331:android:38590e739d3510dbdbd996" />
+                  <option name="projectId" value="dartbud-1def6" />
+                  <option name="projectNumber" value="1047061559331" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
