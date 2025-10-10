@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group1.dartbud.ui.theme.DarkSecondary
+import com.group1.dartbud.ui.theme.LightPrimary
+import com.group1.dartbud.ui.theme.LightSecondary
 import com.group1.dartbud.viewmodel.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +40,18 @@ fun GameSettingsScreen(
     navController: NavController,
     viewModel: PlayerViewModel = viewModel()
 ) {
+
+    // Values for same screen size dp config
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
+
+    // Calculate responsive sizes based on screen dimension
+    val buttonHeight = (screenHeight * 0.09f).coerceIn(50.dp, 80.dp)
+    val buttonCornerRadius = buttonHeight / 2
+    val buttonStrokeWidth = (buttonHeight * 0.14f).coerceIn(6.dp, 12.dp)
+    val buttonFontSize = (buttonHeight.value * 0.28f).coerceIn(16f, 22f).sp
+
     var player1 by remember { mutableStateOf<String?>(null) }
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
@@ -72,9 +88,8 @@ fun GameSettingsScreen(
                 .fillMaxSize()
                 .background(Color(0xFFF5F5F5))
                 .padding(innerPadding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
@@ -284,7 +299,7 @@ fun GameSettingsScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            // Spacer(modifier = Modifier.height(20.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -424,7 +439,7 @@ fun GameSettingsScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(32.dp))
+            // Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = {
                     val p1Name = player1 ?: "PLAYER 1"
@@ -433,23 +448,23 @@ fun GameSettingsScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(75.dp)
+                    .height(buttonHeight)
                     .drawBehind {
                         drawRoundRect(
-                            color = Color(0x80FC1E69),
-                            cornerRadius = CornerRadius(35.dp.toPx()),
-                            style = Stroke(width = 10.dp.toPx())
+                            color = Color.DarkGray,
+                            cornerRadius = CornerRadius(buttonCornerRadius.toPx()),
+                            style = Stroke(width = buttonStrokeWidth.toPx())
                         )
                     },
                 colors = ButtonDefaults.buttonColors(
-                    contentColor = Color.Black
+                    contentColor = Color.White
                 ),
-                shape = RoundedCornerShape(35.dp)
+                shape = RoundedCornerShape(buttonCornerRadius)
             ) {
                 Text(
                     "START GAME!!!",
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 20.sp,
+                    fontSize = buttonFontSize,
                     color = Color.White,
                     style = TextStyle(
                         shadow = Shadow(
