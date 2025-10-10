@@ -1,5 +1,11 @@
 package com.group1.dartbud.screens
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.group1.dartbud.viewmodel.GameViewModel
+import com.group1.dartbud.viewmodel.PlayerViewModel
+import com.group1.dartbud.data.GameStatsEntity
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,8 +41,11 @@ fun GameScreen(
     doubleInEnabled: Boolean = false,
     doubleOutEnabled: Boolean = true,
     player1Name: String = "PLAYER 1",
-    player2Name: String = "PLAYER 2"
+    player2Name: String = "PLAYER 2",
+    gameViewModel: GameViewModel = viewModel(),
+    playerViewModel: PlayerViewModel = viewModel()
 ) {
+    val scope = rememberCoroutineScope()
     var player1 by remember { mutableStateOf(Player(player1Name)) }
     var player2 by remember { mutableStateOf(Player(player2Name)) }
     var currentPlayer by remember { mutableStateOf(1) }
@@ -565,7 +574,7 @@ fun GameScreen(
         )
     }
 
-    // Win Dialog
+    // Win Dialog med lagring
     if (showWinDialog && winner != null) {
         AlertDialog(
             onDismissRequest = { },
@@ -620,13 +629,104 @@ fun GameScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = { navController.popBackStack() },
+                            onClick = {
+                                // Lagre spillet før vi går tilbake
+                                scope.launch {
+                                    val players = playerViewModel.players.value
+                                    val p1 = players.find { it.username == player1Name }
+                                    val p2 = players.find { it.username == player2Name }
+
+                                    if (p1 != null && p2 != null) {
+                                        val winnerId = if (winner == player1) p1.playerId else p2.playerId
+                                        val loser = if (winner == player1) player2 else player1
+
+                                        // Finn høyeste score fra lastThrow
+                                        val p1HighestScore = player1.lastThrow
+                                        val p2HighestScore = player2.lastThrow
+
+                                        val player1Stats = GameStatsEntity(
+                                            gameId = 0,
+                                            playerId = p1.playerId,
+                                            average = player1.average,
+                                            highestScore = p1HighestScore,
+                                            dartsThrown = player1.dartsThrown,
+                                            roundsPlayed = player1.roundsPlayed,
+                                            finalScore = player1.score
+                                        )
+
+                                        val player2Stats = GameStatsEntity(
+                                            gameId = 0,
+                                            playerId = p2.playerId,
+                                            average = player2.average,
+                                            highestScore = p2HighestScore,
+                                            dartsThrown = player2.dartsThrown,
+                                            roundsPlayed = player2.roundsPlayed,
+                                            finalScore = player2.score
+                                        )
+
+                                        gameViewModel.saveGame(
+                                            player1Id = p1.playerId,
+                                            player2Id = p2.playerId,
+                                            winnerId = winnerId,
+                                            doubleIn = doubleInEnabled,
+                                            doubleOut = doubleOutEnabled,
+                                            player1Stats = player1Stats,
+                                            player2Stats = player2Stats
+                                        )
+                                    }
+                                }
+                                navController.popBackStack()
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("New Game")
                         }
                         Button(
                             onClick = {
+                                // Lagre spillet før rematch
+                                scope.launch {
+                                    val players = playerViewModel.players.value
+                                    val p1 = players.find { it.username == player1Name }
+                                    val p2 = players.find { it.username == player2Name }
+
+                                    if (p1 != null && p2 != null) {
+                                        val winnerId = if (winner == player1) p1.playerId else p2.playerId
+
+                                        val p1HighestScore = player1.lastThrow
+                                        val p2HighestScore = player2.lastThrow
+
+                                        val player1Stats = GameStatsEntity(
+                                            gameId = 0,
+                                            playerId = p1.playerId,
+                                            average = player1.average,
+                                            highestScore = p1HighestScore,
+                                            dartsThrown = player1.dartsThrown,
+                                            roundsPlayed = player1.roundsPlayed,
+                                            finalScore = player1.score
+                                        )
+
+                                        val player2Stats = GameStatsEntity(
+                                            gameId = 0,
+                                            playerId = p2.playerId,
+                                            average = player2.average,
+                                            highestScore = p2HighestScore,
+                                            dartsThrown = player2.dartsThrown,
+                                            roundsPlayed = player2.roundsPlayed,
+                                            finalScore = player2.score
+                                        )
+
+                                        gameViewModel.saveGame(
+                                            player1Id = p1.playerId,
+                                            player2Id = p2.playerId,
+                                            winnerId = winnerId,
+                                            doubleIn = doubleInEnabled,
+                                            doubleOut = doubleOutEnabled,
+                                            player1Stats = player1Stats,
+                                            player2Stats = player2Stats
+                                        )
+                                    }
+                                }
+
                                 // Rematch - bytt hvem som starter
                                 firstPlayer = if (firstPlayer == 1) 2 else 1
                                 currentPlayer = firstPlayer
@@ -672,7 +772,6 @@ fun GameScreen(
 
                         Button(
                             onClick = {
-                                // Close app
                                 android.os.Process.killProcess(android.os.Process.myPid())
                             },
                             colors = ButtonDefaults.buttonColors(

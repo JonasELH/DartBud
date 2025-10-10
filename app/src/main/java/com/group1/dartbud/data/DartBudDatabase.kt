@@ -6,12 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [PlayerEntity::class],
-    version = 1,
+    entities = [
+        PlayerEntity::class,
+        GameEntity::class,
+        GameStatsEntity::class
+    ],
+    version = 2, // Økt fra 1 til 2
     exportSchema = false
 )
 abstract class DartBudDatabase : RoomDatabase() {
     abstract fun playerDao(): PlayerDao
+    abstract fun gameDao(): GameDao
+    abstract fun gameStatsDao(): GameStatsDao
 
     companion object {
         @Volatile

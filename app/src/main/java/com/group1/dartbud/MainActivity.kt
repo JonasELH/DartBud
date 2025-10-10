@@ -2,6 +2,7 @@ package com.group1.dartbud
 
 import com.group1.dartbud.screens.ManagePlayersScreen
 import com.group1.dartbud.screens.CreatePlayerScreen
+import com.group1.dartbud.screens.GameHistoryScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,6 +26,7 @@ import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
 import com.group1.dartbud.screens.GameScreen
 import com.group1.dartbud.viewmodel.PlayerViewModel
+import com.group1.dartbud.viewmodel.GameViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,8 +43,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DartBudApp() {
     val navController = rememberNavController()
-    // Opprett ViewModel én gang på topp-nivå så den deles mellom skjermer
     val playerViewModel: PlayerViewModel = viewModel()
+    val gameViewModel: GameViewModel = viewModel()
 
     Scaffold { innerPadding ->
         NavHost(
@@ -92,6 +94,28 @@ fun DartBudApp() {
                 GameSettingsScreen(
                     navController = navController,
                     viewModel = playerViewModel
+                )
+            }
+
+            composable(
+                "game_history",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
+                }
+            ) {
+                GameHistoryScreen(
+                    navController = navController,
+                    gameViewModel = gameViewModel,
+                    playerViewModel = playerViewModel
                 )
             }
 
@@ -164,7 +188,9 @@ fun DartBudApp() {
                     doubleInEnabled = doubleIn,
                     doubleOutEnabled = doubleOut,
                     player1Name = player1Name,
-                    player2Name = player2Name
+                    player2Name = player2Name,
+                    gameViewModel = gameViewModel,
+                    playerViewModel = playerViewModel
                 )
             }
         }

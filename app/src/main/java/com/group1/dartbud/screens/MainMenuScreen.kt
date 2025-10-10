@@ -46,6 +46,15 @@ fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) 
             }
 
             Button(
+                onClick = { navController.navigate("game_history") },
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(56.dp)
+            ) {
+                Text("Game History")
+            }
+
+            Button(
                 onClick = { navController.navigate("rules") },
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
