@@ -14,34 +14,33 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group1.dartbud.data.PlayerEntity
+import com.group1.dartbud.viewmodel.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManagePlayersScreen(navController: NavController) {
+fun ManagePlayersScreen(
+    navController: NavController,
+    viewModel: PlayerViewModel = viewModel()
+) {
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var playerToDelete by remember { mutableStateOf<String?>(null) }
+    var playerToDelete by remember { mutableStateOf<PlayerEntity?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
-    var playerToEdit by remember { mutableStateOf<String?>(null) }
+    var playerToEdit by remember { mutableStateOf<PlayerEntity?>(null) }
     var editedPlayerName by remember { mutableStateOf("") }
     var showEditError by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var newPlayerName by remember { mutableStateOf("") }
     var showCreateError by remember { mutableStateOf(false) }
-    var currentPlayers by remember { mutableStateOf(listOf<String>()) }
 
-    // Hent listen når vi kommer hit
-    LaunchedEffect(Unit) {
-        val savedPlayersString = navController.previousBackStackEntry
-            ?.savedStateHandle
-            ?.get<String>("savedPlayersList") ?: ""
-        if (savedPlayersString.isNotEmpty()) {
-            currentPlayers = savedPlayersString.split(",").filter { it.isNotBlank() }
-        }
-    }
+    // Hent spillere fra database
+    val players by viewModel.players.collectAsState()
 
     Scaffold(
         topBar = {
@@ -49,10 +48,6 @@ fun ManagePlayersScreen(navController: NavController) {
                 title = { Text("Manage Players", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Send listen tilbake når vi går tilbake
-                        navController.previousBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("updatedPlayersList", currentPlayers.joinToString(","))
                         navController.popBackStack()
                     }) {
                         Icon(
@@ -98,7 +93,7 @@ fun ManagePlayersScreen(navController: NavController) {
                 )
             }
 
-            if (currentPlayers.isEmpty()) {
+            if (players.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -124,7 +119,7 @@ fun ManagePlayersScreen(navController: NavController) {
                 }
             } else {
                 Text(
-                    "Saved Players (${currentPlayers.size})",
+                    "Saved Players (${players.size})",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -133,7 +128,7 @@ fun ManagePlayersScreen(navController: NavController) {
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(currentPlayers) { playerName ->
+                    items(players) { player ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(15.dp),
@@ -150,7 +145,7 @@ fun ManagePlayersScreen(navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = playerName,
+                                    text = player.username,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -160,27 +155,27 @@ fun ManagePlayersScreen(navController: NavController) {
                                 ) {
                                     IconButton(
                                         onClick = {
-                                            playerToEdit = playerName
-                                            editedPlayerName = playerName
+                                            playerToEdit = player
+                                            editedPlayerName = player.username
                                             showEditDialog = true
                                         }
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Edit,
-                                            contentDescription = "Edit $playerName",
+                                            contentDescription = "Edit ${player.username}",
                                             tint = Color(0xFFFC1E69)
                                         )
                                     }
 
                                     IconButton(
                                         onClick = {
-                                            playerToDelete = playerName
+                                            playerToDelete = player
                                             showDeleteDialog = true
                                         }
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
-                                            contentDescription = "Delete $playerName",
+                                            contentDescription = "Delete ${player.username}",
                                             tint = Color.Red
                                         )
                                     }
@@ -193,7 +188,7 @@ fun ManagePlayersScreen(navController: NavController) {
         }
     }
 
-    // Create Player Dialog - NY!
+    // Create Player Dialog
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -225,10 +220,10 @@ fun ManagePlayersScreen(navController: NavController) {
                 Button(
                     onClick = {
                         val trimmedName = newPlayerName.trim()
-                        if (trimmedName.isBlank() || trimmedName in currentPlayers) {
+                        if (trimmedName.isBlank() || players.any { it.username == trimmedName }) {
                             showCreateError = true
                         } else {
-                            currentPlayers = currentPlayers + trimmedName
+                            viewModel.addPlayer(trimmedName)
                             newPlayerName = ""
                             showCreateError = false
                             showCreateDialog = false
@@ -261,11 +256,11 @@ fun ManagePlayersScreen(navController: NavController) {
                 playerToDelete = null
             },
             title = { Text("Delete Player?", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete \"$playerToDelete\"? This action cannot be undone.") },
+            text = { Text("Are you sure you want to delete \"${playerToDelete?.username}\"? This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
-                        currentPlayers = currentPlayers.filter { it != playerToDelete }
+                        playerToDelete?.let { viewModel.deletePlayer(it) }
                         showDeleteDialog = false
                         playerToDelete = null
                     },
@@ -320,10 +315,13 @@ fun ManagePlayersScreen(navController: NavController) {
                 Button(
                     onClick = {
                         val trimmedName = editedPlayerName.trim()
-                        if (trimmedName.isBlank() || (trimmedName != playerToEdit && trimmedName in currentPlayers)) {
+                        if (trimmedName.isBlank() ||
+                            (trimmedName != playerToEdit?.username && players.any { it.username == trimmedName })) {
                             showEditError = true
                         } else {
-                            currentPlayers = currentPlayers.map { if (it == playerToEdit) trimmedName else it }
+                            playerToEdit?.let {
+                                viewModel.updatePlayer(it.copy(username = trimmedName))
+                            }
                             showEditDialog = false
                             playerToEdit = null
                             editedPlayerName = ""

@@ -26,38 +26,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group1.dartbud.viewmodel.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameSettingsScreen(navController: NavController) {
+fun GameSettingsScreen(
+    navController: NavController,
+    viewModel: PlayerViewModel = viewModel()
+) {
     var player1 by remember { mutableStateOf<String?>(null) }
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
-    var savedPlayers by remember { mutableStateOf(listOf<String>()) }
     var expandedPlayer1 by remember { mutableStateOf(false) }
     var expandedPlayer2 by remember { mutableStateOf(false) }
 
-    // Lytt etter oppdatert liste fra ManagePlayersScreen
-    val updatedPlayersListFromManage = navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.getStateFlow<String?>("updatedPlayersList", null)
-        ?.collectAsState()
-
-    LaunchedEffect(updatedPlayersListFromManage?.value) {
-        val playersString = updatedPlayersListFromManage?.value
-        if (playersString != null && playersString.isNotEmpty()) {
-            val newPlayers = playersString.split(",").filter { it.isNotBlank() }
-            if (newPlayers.isNotEmpty()) {
-                savedPlayers = newPlayers
-            }
-            // Reset verdien
-            navController.currentBackStackEntry
-                ?.savedStateHandle
-                ?.set("updatedPlayersList", null as String?)
-        }
-    }
+    // Hent spillere fra database
+    val players by viewModel.players.collectAsState()
+    val playerNames = players.map { it.username }
 
     Scaffold(
         topBar = {
@@ -100,7 +88,7 @@ fun GameSettingsScreen(navController: NavController) {
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = savedPlayers.isNotEmpty()
+                        enabled = playerNames.isNotEmpty()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
@@ -131,7 +119,7 @@ fun GameSettingsScreen(navController: NavController) {
                             fontSize = 14.sp
                         )
                         HorizontalDivider()
-                        savedPlayers.forEach { playerName ->
+                        playerNames.forEach { playerName ->
                             DropdownMenuItem(
                                 text = { Text(playerName) },
                                 onClick = {
@@ -149,7 +137,7 @@ fun GameSettingsScreen(navController: NavController) {
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = savedPlayers.isNotEmpty()
+                        enabled = playerNames.isNotEmpty()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
@@ -180,7 +168,7 @@ fun GameSettingsScreen(navController: NavController) {
                             fontSize = 14.sp
                         )
                         HorizontalDivider()
-                        savedPlayers.forEach { playerName ->
+                        playerNames.forEach { playerName ->
                             DropdownMenuItem(
                                 text = { Text(playerName) },
                                 onClick = {
@@ -193,12 +181,8 @@ fun GameSettingsScreen(navController: NavController) {
                 }
             }
 
-            // Manage Players knapp - nå den eneste måten å håndtere spillere
             Button(
                 onClick = {
-                    navController.currentBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("savedPlayersList", savedPlayers.joinToString(","))
                     navController.navigate("managePlayers")
                 },
                 modifier = Modifier

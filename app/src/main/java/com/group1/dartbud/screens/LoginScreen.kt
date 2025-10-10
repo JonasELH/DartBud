@@ -15,56 +15,50 @@ import com.group1.dartbud.R
 @Composable
 fun LoginScreen(navController: NavController) {
 
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .padding(bottom = 40.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(0.dp)
+            // Image is now INSIDE the Column
+            Image(
+                painter = painterResource(id = R.drawable.dartlogo),
+                contentDescription = "DartBud Logo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1.5f),
+                contentScale = ContentScale.Fit
+            )
+
+            Text(
+                text = "Login",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            Button(
+                onClick = { /* Google login */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
             ) {
-                // Image is now INSIDE the Column
-                Image(
-                    painter = painterResource(id = R.drawable.dartlogo),
-                    contentDescription = "DartBud Logo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f), // Fixed height instead of weight for login screen
-                    contentScale = ContentScale.Fit
-                )
+                Text("Log in with Google")
+            }
 
-                Text(
-                    text = "Login",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Button(
-                    onClick = { /* Google login */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Log in with Google")
-                }
-
-                Button(
-                    onClick = { /* Username/password login */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Log in with username and password")
-                }
-
-                OutlinedButton(
-                    onClick = { navController.navigate("main_menu") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Continue as Guest (will disappear)")
-                }
+            OutlinedButton(
+                onClick = { navController.navigate("main_menu") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                Text("Continue as Guest (will disappear)")
             }
         }
     }
+}

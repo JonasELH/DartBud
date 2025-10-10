@@ -22,7 +22,8 @@ fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .padding(bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -31,14 +32,14 @@ fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) 
                 contentDescription = "DartBud Logo",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(2f),
-                contentScale = ContentScale.Crop
+                    .weight(1.5f),
+                contentScale = ContentScale.Fit
             )
 
             Button(
                 onClick = { navController.navigate("game_settings") },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.6f)
                     .height(56.dp)
             ) {
                 Text("Play Game")
@@ -47,7 +48,7 @@ fun MainMenuScreen(navController: NavController, modifier: Modifier = Modifier) 
             Button(
                 onClick = { navController.navigate("rules") },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.6f)
                     .height(56.dp)
             ) {
                 Text("Rules")

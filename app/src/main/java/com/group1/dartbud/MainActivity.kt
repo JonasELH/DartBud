@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import com.group1.dartbud.ui.theme.DartBudTheme
 import androidx.navigation.compose.NavHost
@@ -23,6 +24,7 @@ import com.group1.dartbud.screens.MainMenuScreen
 import com.group1.dartbud.screens.RulesScreen
 import com.group1.dartbud.screens.LoginScreen
 import com.group1.dartbud.screens.GameScreen
+import com.group1.dartbud.viewmodel.PlayerViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,6 +41,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DartBudApp() {
     val navController = rememberNavController()
+    // Opprett ViewModel én gang på topp-nivå så den deles mellom skjermer
+    val playerViewModel: PlayerViewModel = viewModel()
 
     Scaffold { innerPadding ->
         NavHost(
@@ -85,7 +89,10 @@ fun DartBudApp() {
                     ) + fadeOut(animationSpec = tween(200))
                 }
             ) {
-                GameSettingsScreen(navController = navController)
+                GameSettingsScreen(
+                    navController = navController,
+                    viewModel = playerViewModel
+                )
             }
 
             composable(
@@ -122,7 +129,8 @@ fun DartBudApp() {
                 }
             ) {
                 ManagePlayersScreen(
-                    navController = navController
+                    navController = navController,
+                    viewModel = playerViewModel
                 )
             }
 
