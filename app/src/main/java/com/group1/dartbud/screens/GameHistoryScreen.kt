@@ -34,6 +34,8 @@ fun GameHistoryScreen(
     val games by gameViewModel.games.collectAsState()
     val players by playerViewModel.players.collectAsState()
 
+    println("📊 DEBUG GameHistory: games.size = ${games.size}")
+    println("📊 DEBUG GameHistory: players.size = ${players.size}")
     Scaffold(
         topBar = {
             TopAppBar(

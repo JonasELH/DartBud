@@ -630,7 +630,7 @@ fun GameScreen(
                     ) {
                         Button(
                             onClick = {
-                                // Lagre spillet før vi går tilbake
+                                // Lagre spillet før vi går til hovedmeny
                                 scope.launch {
                                     val players = playerViewModel.players.value
                                     val p1 = players.find { it.username == player1Name }
@@ -638,9 +638,7 @@ fun GameScreen(
 
                                     if (p1 != null && p2 != null) {
                                         val winnerId = if (winner == player1) p1.playerId else p2.playerId
-                                        val loser = if (winner == player1) player2 else player1
 
-                                        // Finn høyeste score fra lastThrow
                                         val p1HighestScore = player1.lastThrow
                                         val p2HighestScore = player2.lastThrow
 
@@ -675,11 +673,17 @@ fun GameScreen(
                                         )
                                     }
                                 }
-                                navController.popBackStack()
+                                // Naviger til hovedmenyen
+                                navController.navigate("main_menu") {
+                                    popUpTo("main_menu") { inclusive = true }
+                                }
                             },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFC1E69)
+                            )
                         ) {
-                            Text("New Game")
+                            Text("Main Menu")
                         }
                         Button(
                             onClick = {
@@ -747,39 +751,12 @@ fun GameScreen(
                                 inputValue = ""
                                 multiplier = 1
                             },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            )
                         ) {
                             Text("Rematch")
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                showWinDialog = false
-                                winner = null
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Gray
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Continue")
-                        }
-
-                        Button(
-                            onClick = {
-                                android.os.Process.killProcess(android.os.Process.myPid())
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Red
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Close App")
                         }
                     }
                 }
