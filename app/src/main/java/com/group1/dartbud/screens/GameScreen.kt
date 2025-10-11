@@ -16,11 +16,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -45,6 +49,27 @@ fun GameScreen(
     gameViewModel: GameViewModel = viewModel(),
     playerViewModel: PlayerViewModel = viewModel()
 ) {
+
+    // Responsive sizing transmission start
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
+
+    val playerCardHeight = (screenHeight * 0.18f).coerceIn(160.dp, 220.dp)
+    val throwButtonHeight = (screenHeight * 0.055f).coerceIn(40.dp, 55.dp)
+    val scoreDisplayHeight = (screenHeight * 0.07f).coerceIn(45.dp, 70.dp)
+    val actionButtonHeight = (screenHeight * 0.065f).coerceIn(48.dp,62.dp)
+    val numberButtonHeight = (screenHeight * 0.078f).coerceIn(52.dp,70.dp)
+
+    val playerCardFontSize = (playerCardHeight.value * 0.25f).coerceIn(44f, 60f).sp
+    val throwButtonFontSize = (throwButtonHeight.value * 0.24f).coerceIn(10f, 13f).sp
+    val scoreDisplayFontSize = (scoreDisplayHeight.value * 0.35f).coerceIn(20f, 28f).sp
+    val actionButtonFontSize = (actionButtonHeight.value * 0.26f).coerceIn(14f, 18f).sp
+    val numberButtonFontSize = (numberButtonHeight.value * 0.4f).coerceIn(24f, 32f).sp
+
+    // Responsive sizing transmission end
+
+
     val scope = rememberCoroutineScope()
     var player1 by remember { mutableStateOf(Player(player1Name)) }
     var player2 by remember { mutableStateOf(Player(player2Name)) }
@@ -770,7 +795,7 @@ fun GameScreen(
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         IconButton(
             onClick = { navController.popBackStack() },
@@ -793,7 +818,9 @@ fun GameScreen(
                 backgroundColor = if (currentPlayer == 1) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player1.score),
-                roundNumber = overallRound
+                roundNumber = overallRound,
+                height = playerCardHeight,
+                fontSize = playerCardFontSize
             )
 
             PlayerCard(
@@ -802,7 +829,9 @@ fun GameScreen(
                 backgroundColor = if (currentPlayer == 2) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player2.score),
-                roundNumber = overallRound
+                roundNumber = overallRound,
+                height = playerCardHeight,
+                fontSize = playerCardFontSize
             )
         }
 
@@ -814,25 +843,32 @@ fun GameScreen(
                 label = "THROW 1:",
                 value = throw1,
                 isActive = currentThrow == 1,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = throwButtonHeight,
+                fontSize = throwButtonFontSize
             )
             ThrowButton(
                 label = "THROW 2:",
                 value = throw2,
                 isActive = currentThrow == 2,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = throwButtonHeight,
+                fontSize = throwButtonFontSize
             )
             ThrowButton(
                 label = "THROW 3:",
                 value = throw3,
                 isActive = currentThrow == 3,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                height = throwButtonHeight,
+                fontSize = throwButtonFontSize
             )
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(scoreDisplayHeight)
                 .padding(horizontal = 32.dp)
                 .background(Color(0xFF1A1A1A), RoundedCornerShape(25.dp))
                 .padding(vertical = 16.dp),
@@ -844,7 +880,7 @@ fun GameScreen(
                 } else {
                     "Score: "
                 },
-                fontSize = 28.sp,
+                fontSize = scoreDisplayFontSize,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
@@ -858,15 +894,15 @@ fun GameScreen(
                 onClick = { undoLastThrow() },
                 modifier = Modifier
                     .weight(1f)
-                    .height(60.dp),
+                    .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFAA4C9E)
                 ),
-                shape = RoundedCornerShape(30.dp)
+                shape = RoundedCornerShape((actionButtonHeight.value * 0.5f).dp)
             ) {
                 Text(
                     "↺ UNDO",
-                    fontSize = 18.sp,
+                    fontSize = actionButtonFontSize,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -876,13 +912,13 @@ fun GameScreen(
                 onClick = { multiplier = if (multiplier == 2) 1 else 2 },
                 modifier = Modifier
                     .weight(1f)
-                    .height(60.dp)
+                    .height(actionButtonHeight)
                     .then(
                         if (multiplier == 2) {
                             Modifier.drawBehind {
                                 drawRoundRect(
                                     color = Color(0xFFFC1E69),
-                                    cornerRadius = CornerRadius(30.dp.toPx()),
+                                    cornerRadius = CornerRadius((actionButtonHeight.value * 0.5f).dp.toPx()),
                                     style = Stroke(width = 4.dp.toPx())
                                 )
                             }
@@ -891,11 +927,11 @@ fun GameScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFDB735)
                 ),
-                shape = RoundedCornerShape(30.dp)
+                shape = RoundedCornerShape((actionButtonHeight.value * 0.5f).dp)
             ) {
                 Text(
                     "Double",
-                    fontSize = 18.sp,
+                    fontSize = actionButtonFontSize,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -905,13 +941,13 @@ fun GameScreen(
                 onClick = { multiplier = if (multiplier == 3) 1 else 3 },
                 modifier = Modifier
                     .weight(1f)
-                    .height(60.dp)
+                    .height(actionButtonHeight)
                     .then(
                         if (multiplier == 3) {
                             Modifier.drawBehind {
                                 drawRoundRect(
                                     color = Color(0xFFFC1E69),
-                                    cornerRadius = CornerRadius(30.dp.toPx()),
+                                    cornerRadius = CornerRadius((actionButtonHeight.value * 0.5f).dp.toPx()),
                                     style = Stroke(width = 4.dp.toPx())
                                 )
                             }
@@ -920,11 +956,11 @@ fun GameScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFCDDC39)
                 ),
-                shape = RoundedCornerShape(30.dp)
+                shape = RoundedCornerShape(actionButtonHeight * 0.5f)
             ) {
                 Text(
                     "Triple",
-                    fontSize = 18.sp,
+                    fontSize = actionButtonFontSize,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -932,50 +968,56 @@ fun GameScreen(
         }
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 for (i in 1..3) {
                     NumberButton(
                         number = i,
                         onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        height = numberButtonHeight,
+                        fontSize = numberButtonFontSize
                     )
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 for (i in 4..6) {
                     NumberButton(
                         number = i,
                         onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        height = numberButtonHeight,
+                        fontSize = numberButtonFontSize
                     )
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 for (i in 7..9) {
                     NumberButton(
                         number = i,
                         onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        height = numberButtonHeight,
+                        fontSize = numberButtonFontSize
                     )
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Button(
                     onClick = {
@@ -984,7 +1026,7 @@ fun GameScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(70.dp),
+                        .height(numberButtonHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF808080)
                     ),
@@ -992,7 +1034,7 @@ fun GameScreen(
                 ) {
                     Text(
                         "CLR",
-                        fontSize = 24.sp,
+                        fontSize = numberButtonFontSize,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1001,7 +1043,9 @@ fun GameScreen(
                 NumberButton(
                     number = 0,
                     onClick = { inputValue += "0" },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    height = numberButtonHeight,
+                    fontSize = numberButtonFontSize
                 )
 
                 Button(
@@ -1012,7 +1056,7 @@ fun GameScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(70.dp),
+                        .height(numberButtonHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
                         else if (isValidInput) Color(0xFF4CAF50)
@@ -1020,13 +1064,13 @@ fun GameScreen(
                         disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
                         else Color(0xFF4CAF50)
                     ),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape((numberButtonHeight.value * 0.29f).dp)
                 ) {
                     Text(
                         text = if (inputValue.isEmpty()) "✓"
                         else if (isValidInput) "✓"
                         else "✗",
-                        fontSize = 32.sp,
+                        fontSize = (numberButtonFontSize.value * 1.14f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1044,17 +1088,19 @@ fun PlayerCard(
     checkout: String,
     roundNumber: Int,
     currentRoundTotal: Int = 0,
+    height: Dp,
+    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.height(220.dp),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.height(height),
+        shape = RoundedCornerShape((height.value * 0.09f).dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding((height.value * 0.055f).dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
@@ -1068,17 +1114,17 @@ fun PlayerCard(
                     if (isActive) {
                         Text(
                             text = "→",
-                            fontSize = 16.sp,
+                            fontSize = (fontSize.value * 0.18f).sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             modifier = Modifier
                                 .padding(end = 4.dp)
-                                .offset(y = (-4).dp)
+                                //.offset(y = (-4).dp)
                         )
                     }
                     Text(
                         text = player.name,
-                        fontSize = 14.sp,
+                        fontSize = (fontSize.value * 0.3f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1087,7 +1133,7 @@ fun PlayerCard(
 
             Text(
                 text = "${player.score}",
-                fontSize = 56.sp,
+                fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -1095,11 +1141,11 @@ fun PlayerCard(
             )
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = "LAST: ${player.lastThrow}",
-                    fontSize = 12.sp,
+                    fontSize = (fontSize.value * 0.2f).sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -1108,7 +1154,7 @@ fun PlayerCard(
 
                 Text(
                     text = checkout,
-                    fontSize = 11.sp,
+                    fontSize = (fontSize.value * 0.2f).sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -1121,21 +1167,21 @@ fun PlayerCard(
                 ) {
                     Text(
                         text = "AVG\n${String.format("%.1f", player.average)}",
-                        fontSize = 10.sp,
+                        fontSize = (fontSize.value * 0.25f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "ROUND\n$roundNumber",
-                        fontSize = 10.sp,
+                        fontSize = (fontSize.value * 0.25f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "DARTS\n${player.dartsThrown}",
-                        fontSize = 10.sp,
+                        fontSize = (fontSize.value * 0.25f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -1151,19 +1197,24 @@ fun ThrowButton(
     label: String,
     value: Int?,
     isActive: Boolean = false,
+    height: Dp, // ← RESPONSIVE
+    fontSize: TextUnit, // ← RESPONSIVE
     modifier: Modifier = Modifier
 ) {
+    val cornerRadius = height * 0.5f
+
     Button(
         onClick = { },
         modifier = modifier
-            .height(50.dp)
+            .height(height)
             .then(
                 if (isActive) {
-                    Modifier.drawBehind {
+                    Modifier.drawWithContent {
+                        drawContent()
                         drawRoundRect(
                             color = Color(0xFFFC1E69),
-                            cornerRadius = CornerRadius(25.dp.toPx()),
-                            style = Stroke(width = 4.dp.toPx())
+                            cornerRadius = CornerRadius(cornerRadius.toPx()), // ← FIXED
+                            style = Stroke(width = 5.dp.toPx()) // ← REDUCED from 4.dp
                         )
                     }
                 } else Modifier
@@ -1171,11 +1222,12 @@ fun ThrowButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF6B6B6B)
         ),
-        shape = RoundedCornerShape(25.dp)
+        shape = RoundedCornerShape(cornerRadius), // ← RESPONSIVE
+        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
     ) {
         Text(
             text = "$label ${value ?: ""}",
-            fontSize = 12.sp,
+            fontSize = fontSize, // ← RESPONSIVE
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
@@ -1186,19 +1238,21 @@ fun ThrowButton(
 fun NumberButton(
     number: Int,
     onClick: () -> Unit,
+    height: Dp,
+    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.height(70.dp),
+        modifier = modifier.height(height),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFFFC1E69)
         ),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape((height.value * 0.29f).dp)
     ) {
         Text(
             text = number.toString(),
-            fontSize = 32.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
