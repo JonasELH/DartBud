@@ -1,10 +1,13 @@
 package com.group1.dartbud.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,20 +18,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.AuthViewModel
 
@@ -39,14 +39,6 @@ fun GameSettingsScreen(
     viewModel: PlayerViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-
-    val buttonHeight = (screenHeight * 0.09f).coerceIn(50.dp, 80.dp)
-    val buttonCornerRadius = buttonHeight / 2
-    val buttonStrokeWidth = (buttonHeight * 0.14f).coerceIn(6.dp, 12.dp)
-    val buttonFontSize = (buttonHeight.value * 0.28f).coerceIn(16f, 22f).sp
-
     var player1 by remember { mutableStateOf<String?>(null) }
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
@@ -54,77 +46,111 @@ fun GameSettingsScreen(
     var expandedPlayer1 by remember { mutableStateOf(false) }
     var expandedPlayer2 by remember { mutableStateOf(false) }
 
-    // Hent spillere fra ViewModel
     val currentUser by authViewModel.currentUser.collectAsState()
     val userProfiles by viewModel.userProfiles.collectAsState()
     val localProfiles by viewModel.localProfiles.collectAsState()
     val allPlayers by viewModel.players.collectAsState()
 
-    // Sett Google User ID når skjermen vises
     LaunchedEffect(currentUser) {
         viewModel.setGoogleUserId(currentUser?.uid)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Game Setup", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A1A),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Bakgrunnsbilde
+        Image(
+            painter = painterResource(id = R.drawable.mainmenu),
+            contentDescription = "Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Tilbake-knapp øverst til venstre
+        IconButton(
+            onClick = { navController.popBackStack() },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .size(48.dp)
+                .shadow(8.dp, CircleShape)
+                .background(Color(0xCC000000), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
-    ) { innerPadding ->
+
+        // Hovedinnhold
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(top = 80.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Player selection dropdowns
+            // Tittel
+            Spacer(modifier = Modifier.height(15.dp))
+            Text(
+                "Game Setup",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                modifier = Modifier
+                    .shadow(4.dp)
+                    .padding(bottom = 8.dp)
+            )
+
+            // Player selection
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Player 1 Dropdown
+                // Player 1
                 Box(modifier = Modifier.weight(1f)) {
+                    val player1Interaction = remember { MutableInteractionSource() }
+                    val isPlayer1Pressed by player1Interaction.collectIsPressedAsState()
+
                     Button(
                         onClick = { expandedPlayer1 = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp),
+                            .height(60.dp)
+                            .shadow(6.dp, RoundedCornerShape(30.dp)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x88000000)
+                        ),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = allPlayers.isNotEmpty()
+                        enabled = allPlayers.isNotEmpty(),
+                        border = if (isPlayer1Pressed) {
+                            BorderStroke(3.dp, Color(0xFFFFD700))
+                        } else null,
+                        interactionSource = player1Interaction
                     ) {
-                        Icon(Icons.Default.Person, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("SELECT PLAYER 1", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                            Text(
+                                "CHOOSE PLAYER 1",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
                     }
 
                     DropdownMenu(
                         expanded = expandedPlayer1,
                         onDismissRequest = { expandedPlayer1 = false }
                     ) {
-                        // Mine Profiler
                         if (userProfiles.isNotEmpty()) {
                             Text(
-                                "👤 Mine Profiler",
+                                "👤 My Profiles",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
@@ -152,10 +178,9 @@ fun GameSettingsScreen(
                             }
                         }
 
-                        // Lokale Spillere
                         if (localProfiles.isNotEmpty()) {
                             Text(
-                                "🎯 Lokale Spillere",
+                                "🎯 Local Players",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
@@ -171,10 +196,9 @@ fun GameSettingsScreen(
                             }
                         }
 
-                        // Hvis ingen profiler finnes
                         if (userProfiles.isEmpty() && localProfiles.isEmpty()) {
                             Text(
-                                "Ingen spillere ennå",
+                                "No players yet",
                                 modifier = Modifier.padding(16.dp),
                                 color = Color.Gray,
                                 fontSize = 12.sp
@@ -183,31 +207,47 @@ fun GameSettingsScreen(
                     }
                 }
 
-                // Player 2 Dropdown
+                // Player 2
                 Box(modifier = Modifier.weight(1f)) {
+                    val player2Interaction = remember { MutableInteractionSource() }
+                    val isPlayer2Pressed by player2Interaction.collectIsPressedAsState()
+
                     Button(
                         onClick = { expandedPlayer2 = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp),
+                            .height(60.dp)
+                            .shadow(6.dp, RoundedCornerShape(30.dp)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x88000000)
+                        ),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = allPlayers.isNotEmpty()
+                        enabled = allPlayers.isNotEmpty(),
+                        border = if (isPlayer2Pressed) {
+                            BorderStroke(3.dp, Color(0xFFFFD700))
+                        } else null,
+                        interactionSource = player2Interaction
                     ) {
-                        Icon(Icons.Default.Person, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("SELECT PLAYER 2", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Spacer(Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                            Text(
+                                "CHOOSE PLAYER ",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
                     }
 
                     DropdownMenu(
                         expanded = expandedPlayer2,
                         onDismissRequest = { expandedPlayer2 = false }
                     ) {
-                        // Mine Profiler
                         if (userProfiles.isNotEmpty()) {
                             Text(
-                                "👤 Mine Profiler",
+                                "👤 My Profiles",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
@@ -235,10 +275,9 @@ fun GameSettingsScreen(
                             }
                         }
 
-                        // Lokale Spillere
                         if (localProfiles.isNotEmpty()) {
                             Text(
-                                "🎯 Lokale Spillere",
+                                "🎯 Local Players",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
@@ -254,10 +293,9 @@ fun GameSettingsScreen(
                             }
                         }
 
-                        // Hvis ingen profiler finnes
                         if (userProfiles.isEmpty() && localProfiles.isEmpty()) {
                             Text(
-                                "Ingen spillere ennå",
+                                "No players yet",
                                 modifier = Modifier.padding(16.dp),
                                 color = Color.Gray,
                                 fontSize = 12.sp
@@ -267,233 +305,177 @@ fun GameSettingsScreen(
                 }
             }
 
+            // Selected players display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (player1 != null) Color(0xCC000000) else Color(0x66000000)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (player1 != null) 8.dp else 2.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            player1 ?: "PLAYER 1",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        if (player1 != null) {
+                            TextButton(onClick = { player1 = null }) {
+                                Text("✗ Remove", fontSize = 10.sp, color = Color(0xFFFFD700))
+                            }
+                        }
+                    }
+                }
+
+                Text(
+                    "VS",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (player2 != null) Color(0xCC000000) else Color(0x66000000)
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = if (player2 != null) 8.dp else 2.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            player2 ?: "PLAYER 2",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        if (player2 != null) {
+                            TextButton(onClick = { player2 = null }) {
+                                Text("✗ Remove", fontSize = 10.sp, color = Color(0xFFFFD700))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Manage Players button
+            Spacer(modifier = Modifier.height(80.dp))
+            val manageInteraction = remember { MutableInteractionSource() }
+            val isManagePressed by manageInteraction.collectIsPressedAsState()
+
             Button(
                 onClick = { navController.navigate("managePlayers") },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(30.dp),
+                    .fillMaxWidth(0.85f)
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFC1E69)
-                )
+                    containerColor = Color(0x88000000)
+                ),
+                shape = RoundedCornerShape(28.dp),
+                border = if (isManagePressed) {
+                    BorderStroke(3.dp, Color(0xFFFFD700))
+                } else null,
+                interactionSource = manageInteraction
             ) {
                 Text(
                     "MANAGE PLAYERS",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 16.sp
                 )
             }
 
             // Game Settings
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "🎯 IN GAME SETTINGS:",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xCC000000)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Button(
-                        onClick = { },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(25.dp)
+                    Text(
+                        "🎯 GAME SETTINGS",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.White,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("DOUBLE IN:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(
+                            "Double In:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        Switch(
+                            checked = doubleIn,
+                            onCheckedChange = { doubleIn = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFFFD700),
+                                checkedTrackColor = Color(0x88FFD700)
+                            )
+                        )
                     }
-                    OutlinedButton(
-                        onClick = { doubleIn = !doubleIn },
-                        modifier = Modifier.size(32.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.White,
-                            contentColor = if (doubleIn) Color(0xFFFC1E69) else Color.Gray
-                        ),
-                        border = BorderStroke(2.dp, Color(0xFFFC1E69)),
-                        contentPadding = PaddingValues(0.dp)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if (doubleIn) "✓" else "", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = { },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp),
-                        shape = RoundedCornerShape(25.dp)
-                    ) {
-                        Text("DOUBLE OUT:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    OutlinedButton(
-                        onClick = { doubleOut = !doubleOut },
-                        modifier = Modifier.size(32.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.White,
-                            contentColor = if (doubleOut) Color(0xFFFC1E69) else Color.Gray
-                        ),
-                        border = BorderStroke(2.dp, Color(0xFFFC1E69)),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text(if (doubleOut) "✓" else "", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(
+                            "Double Out:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        Switch(
+                            checked = doubleOut,
+                            onCheckedChange = { doubleOut = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFFFD700),
+                                checkedTrackColor = Color(0x88FFD700)
+                            )
+                        )
                     }
                 }
             }
 
-            // Player cards preview
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 25.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.width(if (player1 != null) 140.dp else 120.dp),
-                            shape = RoundedCornerShape(25.dp),
-                            elevation = CardDefaults.cardElevation(
-                                defaultElevation = if (player1 != null) 8.dp else 2.dp
-                            ),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (player1 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    player1 ?: "PLAYER 1",
-                                    fontWeight = if (player1 != null) FontWeight.ExtraBold else FontWeight.Bold,
-                                    fontSize = if (player1 != null) 16.sp else 12.sp,
-                                    color = Color.White,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                        TextButton(
-                            onClick = { player1 = null },
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            enabled = player1 != null
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    "✗",
-                                    fontSize = 20.sp,
-                                    color = if (player1 != null) Color.Red else Color.Gray,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.offset(y = (-1).dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    "Remove Player 1",
-                                    fontSize = 11.sp,
-                                    color = if (player1 != null) Color.Red else Color.Gray,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                    Box(
-                        modifier = Modifier.height(110.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "VS",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 25.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.width(if (player2 != null) 140.dp else 120.dp),
-                            shape = RoundedCornerShape(25.dp),
-                            elevation = CardDefaults.cardElevation(
-                                defaultElevation = if (player2 != null) 8.dp else 2.dp
-                            ),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (player2 != null) Color(0xFFFC1E69) else Color(0xFF6B6B6B)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    player2 ?: "PLAYER 2",
-                                    fontWeight = if (player2 != null) FontWeight.ExtraBold else FontWeight.Bold,
-                                    fontSize = if (player2 != null) 16.sp else 12.sp,
-                                    color = Color.White,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                        TextButton(
-                            onClick = { player2 = null },
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            enabled = player2 != null
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    "✗",
-                                    fontSize = 20.sp,
-                                    color = if (player2 != null) Color.Red else Color.Gray,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.offset(y = (-1).dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    "Remove Player 2",
-                                    fontSize = 11.sp,
-                                    color = if (player2 != null) Color.Red else Color.Gray,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            // Start Game button
+            val startInteraction = remember { MutableInteractionSource() }
+            val isStartPressed by startInteraction.collectIsPressedAsState()
 
             Button(
                 onClick = {
@@ -503,31 +485,24 @@ fun GameSettingsScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(buttonHeight)
-                    .drawBehind {
-                        drawRoundRect(
-                            color = Color.DarkGray,
-                            cornerRadius = CornerRadius(buttonCornerRadius.toPx()),
-                            style = Stroke(width = buttonStrokeWidth.toPx())
-                        )
-                    },
+                    .height(70.dp)
+                    .shadow(12.dp, RoundedCornerShape(35.dp)),
                 colors = ButtonDefaults.buttonColors(
-                    contentColor = Color.White
+                    containerColor = Color(0xCC000000)
                 ),
-                shape = RoundedCornerShape(buttonCornerRadius)
+                shape = RoundedCornerShape(35.dp),
+                border = if (isStartPressed) {
+                    BorderStroke(4.dp, Color(0xFFFFD700))
+                } else {
+                    BorderStroke(3.dp, Color.White)
+                },
+                interactionSource = startInteraction
             ) {
                 Text(
                     "START GAME!!!",
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = buttonFontSize,
-                    color = Color.White,
-                    style = TextStyle(
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            offset = Offset(2f, 2f),
-                            blurRadius = 4f
-                        )
-                    )
+                    fontSize = 24.sp,
+                    color = Color.White
                 )
             }
         }
