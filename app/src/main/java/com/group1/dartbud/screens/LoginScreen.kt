@@ -20,13 +20,17 @@ import com.google.android.gms.common.api.ApiException
 import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.AuthState
 import com.group1.dartbud.viewmodel.AuthViewModel
+import com.group1.dartbud.viewmodel.PlayerViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     navController: NavController,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    playerViewModel: PlayerViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val currentUser by authViewModel.currentUser.collectAsState()
     val authState by authViewModel.authState.collectAsState()
 
@@ -45,20 +49,30 @@ fun LoginScreen(
         }
     }
 
-    // Naviger automatisk hvis allerede innlogget
+    // Håndter innlogging og profil-opprettelse
     LaunchedEffect(currentUser) {
-        if (currentUser != null) {
-            navController.navigate("main_menu") {
-                popUpTo("login") { inclusive = true }
-            }
-        }
-    }
+        currentUser?.let { user ->
+            scope.launch {
+                // Sjekk om bruker allerede har primærprofil
+                val hasPrimary = playerViewModel.hasPrimaryProfile(user.uid)
 
-    // Naviger når innlogging er vellykket
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Success) {
-            navController.navigate("main_menu") {
-                popUpTo("login") { inclusive = true }
+                if (!hasPrimary) {
+                    // Opprett primærprofil automatisk
+                    playerViewModel.createPrimaryProfileForGoogleUser(
+                        googleUserId = user.uid,
+                        displayName = user.displayName ?: "Player",
+                        email = user.email ?: "",
+                        photoUrl = user.photoUrl?.toString()
+                    )
+                }
+
+                // Sett Google User ID i PlayerViewModel
+                playerViewModel.setGoogleUserId(user.uid)
+
+                // Naviger til hovedmeny
+                navController.navigate("main_menu") {
+                    popUpTo("login") { inclusive = true }
+                }
             }
         }
     }

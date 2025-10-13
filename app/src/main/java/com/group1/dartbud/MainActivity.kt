@@ -61,7 +61,10 @@ fun DartBudApp() {
                 )
             }
             composable("main_menu") {
-                MainMenuScreen(navController = navController)
+                MainMenuScreen(
+                    navController = navController,
+                    authViewModel = authViewModel
+                )
             }
             composable(
                 "rules",

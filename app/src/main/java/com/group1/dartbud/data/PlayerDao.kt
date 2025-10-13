@@ -25,4 +25,18 @@ interface PlayerDao {
 
     @Query("DELETE FROM players WHERE playerId = :id")
     suspend fun deletePlayerById(id: Int)
+
+    // NYE QUERIES for Google Sign-In
+
+    @Query("SELECT * FROM players WHERE googleUserId = :googleUserId")
+    fun getPlayersByGoogleUserId(googleUserId: String): Flow<List<PlayerEntity>>
+
+    @Query("SELECT * FROM players WHERE googleUserId = :googleUserId AND isPrimaryProfile = 1 LIMIT 1")
+    suspend fun getPrimaryProfileByGoogleUserId(googleUserId: String): PlayerEntity?
+
+    @Query("SELECT * FROM players WHERE isUserProfile = 1 AND googleUserId = :googleUserId ORDER BY isPrimaryProfile DESC, username ASC")
+    fun getUserProfiles(googleUserId: String): Flow<List<PlayerEntity>>
+
+    @Query("SELECT * FROM players WHERE isUserProfile = 0 ORDER BY username ASC")
+    fun getLocalProfiles(): Flow<List<PlayerEntity>>
 }

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1047061559331",
+    "project_id": "dartbud-1def6",
+    "storage_bucket": "dartbud-1def6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1047061559331:android:38590e739d3510dbdbd996",
+        "android_client_info": {
+          "package_name": "com.group1.dartbud"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1047061559331-oonvm1jmg84nt7een262sdh3j1d0ri7l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.group1.dartbud",
+            "certificate_hash": "a9c625f8273ce67b3aa2f417781a1dd30bbe6a4e"
+          }
+        },
+        {
+          "client_id": "1047061559331-kfn5bcu39rg20dpjphgnk996bm9t335p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA69HRqWlxlLFbDs7CNb2D9TlMNf_lkdBU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1047061559331-kfn5bcu39rg20dpjphgnk996bm9t335p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

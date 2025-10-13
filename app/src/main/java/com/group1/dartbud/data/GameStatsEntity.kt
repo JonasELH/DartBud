@@ -2,6 +2,7 @@ package com.group1.dartbud.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
@@ -19,6 +20,10 @@ import androidx.room.PrimaryKey
             childColumns = ["playerId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        Index(value = ["gameId"]),
+        Index(value = ["playerId"])
     ]
 )
 data class GameStatsEntity(

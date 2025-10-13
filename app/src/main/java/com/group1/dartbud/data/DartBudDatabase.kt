@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         GameEntity::class,
         GameStatsEntity::class
     ],
-    version = 2, // Økt fra 1 til 2
+    version = 3,
     exportSchema = false
 )
 abstract class DartBudDatabase : RoomDatabase() {

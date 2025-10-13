@@ -9,5 +9,9 @@ data class PlayerEntity(
     val playerId: Int = 0,
     val username: String,
     val userEmail: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val googleUserId: String? = null,
+    val isUserProfile: Boolean = false,
+    val isPrimaryProfile: Boolean = false,
+    val photoUrl: String? = null
 )
