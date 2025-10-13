@@ -29,24 +29,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.group1.dartbud.ui.theme.DarkSecondary
-import com.group1.dartbud.ui.theme.LightPrimary
-import com.group1.dartbud.ui.theme.LightSecondary
 import com.group1.dartbud.viewmodel.PlayerViewModel
+import com.group1.dartbud.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameSettingsScreen(
     navController: NavController,
-    viewModel: PlayerViewModel = viewModel()
+    viewModel: PlayerViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
-
-    // Values for same screen size dp config
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
-    val screenWidth = configuration.screenWidthDp.dp
 
-    // Calculate responsive sizes based on screen dimension
     val buttonHeight = (screenHeight * 0.09f).coerceIn(50.dp, 80.dp)
     val buttonCornerRadius = buttonHeight / 2
     val buttonStrokeWidth = (buttonHeight * 0.14f).coerceIn(6.dp, 12.dp)
@@ -59,9 +54,16 @@ fun GameSettingsScreen(
     var expandedPlayer1 by remember { mutableStateOf(false) }
     var expandedPlayer2 by remember { mutableStateOf(false) }
 
-    // Hent spillere fra database
-    val players by viewModel.players.collectAsState()
-    val playerNames = players.map { it.username }
+    // Hent spillere fra ViewModel
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val userProfiles by viewModel.userProfiles.collectAsState()
+    val localProfiles by viewModel.localProfiles.collectAsState()
+    val allPlayers by viewModel.players.collectAsState()
+
+    // Sett Google User ID når skjermen vises
+    LaunchedEffect(currentUser) {
+        viewModel.setGoogleUserId(currentUser?.uid)
+    }
 
     Scaffold(
         topBar = {
@@ -88,14 +90,17 @@ fun GameSettingsScreen(
                 .fillMaxSize()
                 .background(Color(0xFFF5F5F5))
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Player selection dropdowns
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Player 1 Dropdown
                 Box(modifier = Modifier.weight(1f)) {
                     Button(
                         onClick = { expandedPlayer1 = true },
@@ -103,48 +108,82 @@ fun GameSettingsScreen(
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = playerNames.isNotEmpty()
+                        enabled = allPlayers.isNotEmpty()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "SELECT PLAYER 1",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SELECT PLAYER 1", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
                     }
+
                     DropdownMenu(
                         expanded = expandedPlayer1,
                         onDismissRequest = { expandedPlayer1 = false }
                     ) {
-                        Text(
-                            "Select Player 1",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        HorizontalDivider()
-                        playerNames.forEach { playerName ->
-                            DropdownMenuItem(
-                                text = { Text(playerName) },
-                                onClick = {
-                                    player1 = playerName
-                                    expandedPlayer1 = false
-                                }
+                        // Mine Profiler
+                        if (userProfiles.isNotEmpty()) {
+                            Text(
+                                "👤 Mine Profiler",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFFFC1E69)
+                            )
+                            userProfiles.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(profile.username)
+                                            if (profile.isPrimaryProfile) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("⭐", fontSize = 12.sp)
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        player1 = profile.username
+                                        expandedPlayer1 = false
+                                    }
+                                )
+                            }
+                            if (localProfiles.isNotEmpty()) {
+                                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+
+                        // Lokale Spillere
+                        if (localProfiles.isNotEmpty()) {
+                            Text(
+                                "🎯 Lokale Spillere",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            localProfiles.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = { Text(profile.username) },
+                                    onClick = {
+                                        player1 = profile.username
+                                        expandedPlayer1 = false
+                                    }
+                                )
+                            }
+                        }
+
+                        // Hvis ingen profiler finnes
+                        if (userProfiles.isEmpty() && localProfiles.isEmpty()) {
+                            Text(
+                                "Ingen spillere ennå",
+                                modifier = Modifier.padding(16.dp),
+                                color = Color.Gray,
+                                fontSize = 12.sp
                             )
                         }
                     }
                 }
+
+                // Player 2 Dropdown
                 Box(modifier = Modifier.weight(1f)) {
                     Button(
                         onClick = { expandedPlayer2 = true },
@@ -152,44 +191,76 @@ fun GameSettingsScreen(
                             .fillMaxWidth()
                             .height(60.dp),
                         shape = RoundedCornerShape(30.dp),
-                        enabled = playerNames.isNotEmpty()
+                        enabled = allPlayers.isNotEmpty()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "SELECT PLAYER 2",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("SELECT PLAYER 2", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Icon(Icons.Default.ArrowDropDown, null, Modifier.size(20.dp))
                     }
+
                     DropdownMenu(
                         expanded = expandedPlayer2,
                         onDismissRequest = { expandedPlayer2 = false }
                     ) {
-                        Text(
-                            "Select Player 2",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        HorizontalDivider()
-                        playerNames.forEach { playerName ->
-                            DropdownMenuItem(
-                                text = { Text(playerName) },
-                                onClick = {
-                                    player2 = playerName
-                                    expandedPlayer2 = false
-                                }
+                        // Mine Profiler
+                        if (userProfiles.isNotEmpty()) {
+                            Text(
+                                "👤 Mine Profiler",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFFFC1E69)
+                            )
+                            userProfiles.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(profile.username)
+                                            if (profile.isPrimaryProfile) {
+                                                Spacer(Modifier.width(4.dp))
+                                                Text("⭐", fontSize = 12.sp)
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        player2 = profile.username
+                                        expandedPlayer2 = false
+                                    }
+                                )
+                            }
+                            if (localProfiles.isNotEmpty()) {
+                                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+
+                        // Lokale Spillere
+                        if (localProfiles.isNotEmpty()) {
+                            Text(
+                                "🎯 Lokale Spillere",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            localProfiles.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = { Text(profile.username) },
+                                    onClick = {
+                                        player2 = profile.username
+                                        expandedPlayer2 = false
+                                    }
+                                )
+                            }
+                        }
+
+                        // Hvis ingen profiler finnes
+                        if (userProfiles.isEmpty() && localProfiles.isEmpty()) {
+                            Text(
+                                "Ingen spillere ennå",
+                                modifier = Modifier.padding(16.dp),
+                                color = Color.Gray,
+                                fontSize = 12.sp
                             )
                         }
                     }
@@ -197,9 +268,7 @@ fun GameSettingsScreen(
             }
 
             Button(
-                onClick = {
-                    navController.navigate("managePlayers")
-                },
+                onClick = { navController.navigate("managePlayers") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
@@ -215,6 +284,7 @@ fun GameSettingsScreen(
                 )
             }
 
+            // Game Settings
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -237,11 +307,7 @@ fun GameSettingsScreen(
                             .height(50.dp),
                         shape = RoundedCornerShape(25.dp)
                     ) {
-                        Text(
-                            "DOUBLE IN:",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
+                        Text("DOUBLE IN:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                     OutlinedButton(
                         onClick = { doubleIn = !doubleIn },
@@ -254,11 +320,7 @@ fun GameSettingsScreen(
                         border = BorderStroke(2.dp, Color(0xFFFC1E69)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(
-                            if (doubleIn) "✓" else "",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
+                        Text(if (doubleIn) "✓" else "", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -274,11 +336,7 @@ fun GameSettingsScreen(
                             .height(50.dp),
                         shape = RoundedCornerShape(25.dp)
                     ) {
-                        Text(
-                            "DOUBLE OUT:",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
+                        Text("DOUBLE OUT:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                     OutlinedButton(
                         onClick = { doubleOut = !doubleOut },
@@ -291,15 +349,12 @@ fun GameSettingsScreen(
                         border = BorderStroke(2.dp, Color(0xFFFC1E69)),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text(
-                            if (doubleOut) "✓" else "",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
+                        Text(if (doubleOut) "✓" else "", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
             }
-            // Spacer(modifier = Modifier.height(20.dp))
+
+            // Player cards preview
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -439,7 +494,7 @@ fun GameSettingsScreen(
                     }
                 }
             }
-            // Spacer(modifier = Modifier.height(32.dp))
+
             Button(
                 onClick = {
                     val p1Name = player1 ?: "PLAYER 1"
