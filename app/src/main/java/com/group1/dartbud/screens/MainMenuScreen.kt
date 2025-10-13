@@ -1,7 +1,15 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.runtime.remember
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
@@ -10,6 +18,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -21,7 +31,6 @@ import androidx.navigation.NavController
 import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.AuthViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainMenuScreen(
     navController: NavController,
@@ -31,92 +40,117 @@ fun MainMenuScreen(
     val context = LocalContext.current
     val currentUser by authViewModel.currentUser.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("DartBud", fontWeight = FontWeight.Bold)
-                        currentUser?.let { user ->
-                            Text(
-                                "Logget inn som ${user.displayName ?: user.email}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal
-                            )
-                        } ?: Text(
-                            "Gjest-modus",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            authViewModel.signOut(context)
-                            navController.navigate("login") {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Logg ut"
-                        )
-                    }
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // Bildet som fyller hele skjermen
+        Image(
+            painter = painterResource(id = R.drawable.mainmenu),
+            contentDescription = "DartBud Logo",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Logout-knapp
+        IconButton(
+            onClick = {
+                authViewModel.signOut(context)
+                navController.navigate("login") {
+                    popUpTo(0) { inclusive = true }
                 }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+                .size(48.dp)
+                .shadow(8.dp, CircleShape)
+                .background(Color(0xCC000000), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = "Logg ut",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
-    ) { innerPadding ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
+
+        // Knapper over bildet nederst
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+                .padding(bottom = 48.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
+            // Play Game knapp
+            val playGameInteraction =
+                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val isPlayGamePressed by playGameInteraction.collectIsPressedAsState()
+
+            Button(
+                onClick = { navController.navigate("game_settings") },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .padding(bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth(0.75f)
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x66000000)
+                ),
+                shape = RoundedCornerShape(28.dp),
+                border = if (isPlayGamePressed) {
+                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                } else null,
+                interactionSource = playGameInteraction
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.dartlogo),
-                    contentDescription = "DartBud Logo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1.5f),
-                    contentScale = ContentScale.Fit
-                )
+                Text("Play Game", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
 
-                Button(
-                    onClick = { navController.navigate("game_settings") },
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(56.dp)
-                ) {
-                    Text("Play Game")
-                }
+            // Game History knapp
+            val gameHistoryInteraction =
+                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val isGameHistoryPressed by gameHistoryInteraction.collectIsPressedAsState()
 
-                Button(
-                    onClick = { navController.navigate("game_history") },
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(56.dp)
-                ) {
-                    Text("Game History")
-                }
+            Button(
+                onClick = { navController.navigate("game_history") },
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x66000000)
+                ),
+                shape = RoundedCornerShape(28.dp),
+                border = if (isGameHistoryPressed) {
+                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                } else null,
+                interactionSource = gameHistoryInteraction
+            ) {
+                Text("Game History", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
 
-                Button(
-                    onClick = { navController.navigate("rules") },
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(56.dp)
-                ) {
-                    Text("Rules")
-                }
+            // Rules knapp
+            val rulesInteraction =
+                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val isRulesPressed by rulesInteraction.collectIsPressedAsState()
+
+            Button(
+                onClick = { navController.navigate("rules") },
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x66000000)
+                ),
+                shape = RoundedCornerShape(28.dp),
+                border = if (isRulesPressed) {
+                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                } else null,
+                interactionSource = rulesInteraction
+            ) {
+                Text("Rules", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
