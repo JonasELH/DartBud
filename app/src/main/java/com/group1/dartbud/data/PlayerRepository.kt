@@ -1,8 +1,14 @@
 package com.group1.dartbud.data
 
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.tasks.await
 
 class PlayerRepository(private val playerDao: PlayerDao) {
+
+    private val firestore = Firebase.firestore
+    private val playersCollection = firestore.collection("players")
 
     val allPlayers: Flow<List<PlayerEntity>> = playerDao.getAllPlayers()
 
@@ -15,20 +21,51 @@ class PlayerRepository(private val playerDao: PlayerDao) {
     }
 
     suspend fun insertPlayer(player: PlayerEntity): Long {
+        // Save to Firestore first
+        playersCollection.document(player.username).set(player).await()
+        // Then save to the local Room database
         return playerDao.insertPlayer(player)
     }
 
     suspend fun updatePlayer(player: PlayerEntity) {
+        // Update in Firestore first
+        playersCollection.document(player.username).set(player).await()
+        // Then update in the local Room database
         playerDao.updatePlayer(player)
     }
 
     suspend fun deletePlayer(player: PlayerEntity) {
+        // Delete from Firestore first
+        playersCollection.document(player.username).delete().await()
+        // Then delete from the local Room database
         playerDao.deletePlayer(player)
     }
 
     suspend fun deletePlayerById(id: Int) {
-        playerDao.deletePlayerById(id)
+        val player = getPlayerById(id)
+        player?.let {
+            deletePlayer(it)
+        }
     }
+
+    fun listenForPlayerUpdates(googleUserId: String) {
+        playersCollection.whereEqualTo("googleUserId", googleUserId)
+            .addSnapshotListener { snapshots, e ->
+                if (e != nil) {
+                    // Handle error, maybe log it
+                    return@addSnapshotListener
+                }
+
+                val players = snapshots?.toObjects(PlayerEntity::class.java)
+                players?.forEach { player ->
+                    // This will insert or update the player in the local database
+                    // Note: This needs to run in a coroutine
+                    // GlobalScope.launch { playerDao.insertPlayer(player) } is one option,
+                    // but ideally you'd use a scope from your ViewModel or Application.
+                }
+            }
+    }
+
 
     // NYE METODER for Google Sign-In
 
