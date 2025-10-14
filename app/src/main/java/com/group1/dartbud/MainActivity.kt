@@ -12,6 +12,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -47,6 +50,19 @@ fun DartBudApp() {
     val playerViewModel: PlayerViewModel = viewModel()
     val gameViewModel: GameViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
+
+    val currentUser by authViewModel.currentUser.collectAsState()
+
+    // When the user logs in, create their primary profile if it doesn't exist.
+    LaunchedEffect(currentUser) {
+        currentUser?.let {
+            playerViewModel.createPrimaryProfileForGoogleUser(
+                googleUserId = it.uid,
+                displayName = it.displayName ?: "Dart User",
+                email = it.email ?: ""
+            )
+        }
+    }
 
     Scaffold { innerPadding ->
         NavHost(
