@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "1047061559331-q4svmbp7s7hb0efam49sh6tlb7121qcc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.group1.dartbud",
+            "certificate_hash": "a7fdc7b7ac9db2b49f4aaca0b1be368d369d0060"
+          }
+        },
+        {
           "client_id": "1047061559331-kfn5bcu39rg20dpjphgnk996bm9t335p.apps.googleusercontent.com",
           "client_type": 3
         }

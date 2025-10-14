@@ -45,7 +45,7 @@ fun MainMenuScreen(
     ) {
         // Bildet som fyller hele skjermen
         Image(
-            painter = painterResource(id = R.drawable.mainmenu),
+            painter = painterResource(id = R.drawable.mainmenuu),
             contentDescription = "DartBud Logo",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

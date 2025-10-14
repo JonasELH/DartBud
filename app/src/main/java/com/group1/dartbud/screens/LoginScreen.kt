@@ -86,7 +86,7 @@ fun LoginScreen(
     ) {
         // Bakgrunnsbilde (samme som main menu eller annet bilde)
         Image(
-            painter = painterResource(id = R.drawable.mainmenu), // Bytt til ditt ønskede bilde
+            painter = painterResource(id = R.drawable.mainmenuu), // Bytt til ditt ønskede bilde
             contentDescription = "Login Background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

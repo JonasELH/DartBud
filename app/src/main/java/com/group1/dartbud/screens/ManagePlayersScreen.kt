@@ -64,7 +64,7 @@ fun ManagePlayersScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Bakgrunnsbilde
         Image(
-            painter = painterResource(id = R.drawable.mainmenu),
+            painter = painterResource(id = R.drawable.mainmenuu),
             contentDescription = "Background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

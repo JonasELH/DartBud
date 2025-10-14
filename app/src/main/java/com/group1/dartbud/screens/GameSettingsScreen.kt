@@ -58,7 +58,7 @@ fun GameSettingsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Bakgrunnsbilde
         Image(
-            painter = painterResource(id = R.drawable.mainmenu),
+            painter = painterResource(id = R.drawable.mainmenuu),
             contentDescription = "Background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -94,7 +94,7 @@ fun GameSettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Tittel
-            Spacer(modifier = Modifier.height(15.dp))
+            Spacer(modifier = Modifier.height(25.dp))
             Text(
                 "Game Setup",
                 fontSize = 32.sp,
@@ -234,7 +234,7 @@ fun GameSettingsScreen(
                         ) {
                             Icon(Icons.Default.Person, null, Modifier.size(20.dp))
                             Text(
-                                "CHOOSE PLAYER ",
+                                "CHOOSE PLAYER 2",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp
                             )
