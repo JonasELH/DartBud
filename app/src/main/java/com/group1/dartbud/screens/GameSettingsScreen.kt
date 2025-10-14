@@ -154,7 +154,7 @@ fun GameSettingsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color(0xFFFC1E69)
+                                color = Color.Black
                             )
                             userProfiles.forEach { profile ->
                                 DropdownMenuItem(
@@ -251,7 +251,7 @@ fun GameSettingsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color(0xFFFC1E69)
+                                color = Color.Black
                             )
                             userProfiles.forEach { profile ->
                                 DropdownMenuItem(
