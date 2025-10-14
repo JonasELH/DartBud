@@ -1,5 +1,9 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group1.dartbud.viewmodel.GameViewModel
 import com.group1.dartbud.viewmodel.PlayerViewModel
@@ -8,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -50,25 +56,22 @@ fun GameScreen(
     playerViewModel: PlayerViewModel = viewModel()
 ) {
 
-    // Responsive sizing transmission start
+    // Responsive sizing
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
 
-    val playerCardHeight = (screenHeight * 0.18f).coerceIn(160.dp, 220.dp)
-    val throwButtonHeight = (screenHeight * 0.055f).coerceIn(40.dp, 55.dp)
-    val scoreDisplayHeight = (screenHeight * 0.07f).coerceIn(45.dp, 70.dp)
+    val playerCardHeight = (screenHeight * 0.25f).coerceIn(220.dp, 320.dp)
+    val throwButtonHeight = (screenHeight * 0.045f).coerceIn(35.dp, 55.dp)
+    val scoreDisplayHeight = (screenHeight * 0.07f).coerceIn(45.dp, 55.dp)
     val actionButtonHeight = (screenHeight * 0.065f).coerceIn(48.dp,62.dp)
     val numberButtonHeight = (screenHeight * 0.078f).coerceIn(52.dp,70.dp)
 
-    val playerCardFontSize = (playerCardHeight.value * 0.25f).coerceIn(44f, 60f).sp
+    val playerCardFontSize = (playerCardHeight.value * 0.20f).coerceIn(44f, 60f).sp
     val throwButtonFontSize = (throwButtonHeight.value * 0.24f).coerceIn(10f, 13f).sp
     val scoreDisplayFontSize = (scoreDisplayHeight.value * 0.35f).coerceIn(20f, 28f).sp
     val actionButtonFontSize = (actionButtonHeight.value * 0.26f).coerceIn(14f, 18f).sp
     val numberButtonFontSize = (numberButtonHeight.value * 0.4f).coerceIn(24f, 32f).sp
-
-    // Responsive sizing transmission end
-
 
     val scope = rememberCoroutineScope()
     var player1 by remember { mutableStateOf(Player(player1Name)) }
@@ -106,7 +109,7 @@ fun GameScreen(
 
     val roundTotal = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
 
-    // Komplett checkout-tabell basert på PDF
+    // Checkout-tabell
     fun calculateCheckout(score: Int): String {
         return when (score) {
             170 -> "T20 T20 Bull"
@@ -232,18 +235,14 @@ fun GameScreen(
     fun checkBust(currentScore: Int, throwTotal: Int, lastDartWasDouble: Boolean, lastDartValue: Int): Pair<Boolean, String> {
         val newScore = currentScore - throwTotal
 
-        // Bust hvis score går under 0
         if (newScore < 0) {
             return Pair(true, "BUST! Score under 0")
         }
 
-        // Bust hvis score blir 1 (kan ikke checke ut)
         if (newScore == 1) {
             return Pair(true, "BUST! Cannot finish on 1")
         }
 
-        // Bust hvis score blir 0 men double out er påkrevd og siste dart ikke var double
-        // Bull (50) teller som double
         if (newScore == 0 && doubleOutEnabled && !lastDartWasDouble && lastDartValue != 50) {
             return Pair(true, "BUST! Must finish on a double")
         }
@@ -260,9 +259,7 @@ fun GameScreen(
 
         val activePlayer = if (currentPlayer == 1) player1 else player2
 
-        // Double In sjekk - kun når spilleren faktisk prøver å score poeng (ikke 0)
         if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0) {
-            // Sjekk om spilleren har fått double i noen av kastene i denne runden
             val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
 
             if (!hasDoubleInRound) {
@@ -279,17 +276,14 @@ fun GameScreen(
                 throw1 = throwValue
                 throw1WasDouble = isDouble
 
-                // Oppdater score etter første kast
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player1 = player1.copy(hasScored = true)
                     }
 
-                    // Sjekk for vinner eller bust etter første kast
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw1WasDouble, throwValue)
                         if (isBust) {
@@ -311,12 +305,10 @@ fun GameScreen(
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player2 = player2.copy(hasScored = true)
                     }
 
-                    // Sjekk for vinner eller bust etter første kast
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw1WasDouble, throwValue)
                         if (isBust) {
@@ -342,17 +334,14 @@ fun GameScreen(
                 throw2 = throwValue
                 throw2WasDouble = isDouble
 
-                // Oppdater score etter andre kast
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player1 = player1.copy(hasScored = true)
                     }
 
-                    // Sjekk for vinner eller bust etter andre kast
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
                         if (isBust) {
@@ -377,12 +366,10 @@ fun GameScreen(
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player2 = player2.copy(hasScored = true)
                     }
 
-                    // Sjekk for vinner eller bust etter andre kast
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
                         if (isBust) {
@@ -414,11 +401,9 @@ fun GameScreen(
                 val total = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
 
                 if (currentPlayer == 1) {
-                    // Oppdater score etter tredje kast
                     val newScore = player1.score - throwValue
                     player1 = player1.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
                         player1 = player1.copy(hasScored = true)
                     }
@@ -428,7 +413,6 @@ fun GameScreen(
                     if (isBust) {
                         bustMessage = message
                         showBustDialog = true
-                        // Tilbakestill score til før runden
                         player1 = player1.copy(score = player1.score + total)
                     } else {
                         val newDartsThrown = player1.dartsThrown + 3
@@ -440,18 +424,15 @@ fun GameScreen(
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
 
-                        // Sjekk for vinner
                         if (newScore == 0) {
                             winner = player1
                             showWinDialog = true
                         }
                     }
                 } else {
-                    // Oppdater score etter tredje kast
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
 
-                    // Marker som scored hvis de har fått poeng OG oppfylt double-in kravet
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
                         player2 = player2.copy(hasScored = true)
                     }
@@ -461,7 +442,6 @@ fun GameScreen(
                     if (isBust) {
                         bustMessage = message
                         showBustDialog = true
-                        // Tilbakestill score til før runden
                         player2 = player2.copy(score = player2.score + total)
                     } else {
                         val newDartsThrown = player2.dartsThrown + 3
@@ -480,7 +460,6 @@ fun GameScreen(
                     }
                 }
 
-                // Bytt spiller og reset
                 currentPlayer = if (currentPlayer == 1) 2 else 1
                 overallRound += 1
                 throw1 = null
@@ -501,7 +480,6 @@ fun GameScreen(
         when (currentThrow) {
             1 -> {
                 if (throw1 == null && throw2 == null && throw3 == null) {
-                    // Gå tilbake til forrige spiller
                     currentPlayer = if (currentPlayer == 1) 2 else 1
 
                     if (currentPlayer == 1 && player1.lastThrow > 0) {
@@ -530,7 +508,6 @@ fun GameScreen(
                 }
             }
             2 -> {
-                // Angre kast 1 - legg tilbake scoren
                 if (throw1 != null) {
                     if (currentPlayer == 1) {
                         player1 = player1.copy(score = player1.score + (throw1 ?: 0))
@@ -543,7 +520,6 @@ fun GameScreen(
                 currentThrow = 1
             }
             3 -> {
-                // Angre kast 2 - legg tilbake scoren
                 if (throw2 != null) {
                     if (currentPlayer == 1) {
                         player1 = player1.copy(score = player1.score + (throw2 ?: 0))
@@ -565,7 +541,6 @@ fun GameScreen(
         AlertDialog(
             onDismissRequest = {
                 showBustDialog = false
-                // Reset throws
                 throw1 = null
                 throw2 = null
                 throw3 = null
@@ -576,8 +551,8 @@ fun GameScreen(
                 inputValue = ""
                 multiplier = 1
             },
-            title = { Text("BUST!", fontWeight = FontWeight.Bold) },
-            text = { Text(bustMessage) },
+            title = { Text("BUST!", fontWeight = FontWeight.Bold, color = Color.White) },
+            text = { Text(bustMessage, color = Color.White) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -591,15 +566,19 @@ fun GameScreen(
                         currentThrow = 1
                         inputValue = ""
                         multiplier = 1
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252)
+                    )
                 ) {
                     Text("OK")
                 }
-            }
+            },
+            containerColor = Color(0xDD000000)
         )
     }
 
-    // Win Dialog med lagring
+    // Win Dialog
     if (showWinDialog && winner != null) {
         AlertDialog(
             onDismissRequest = { },
@@ -613,6 +592,7 @@ fun GameScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp,
                         textAlign = TextAlign.Center,
+                        color = Color.White,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -627,20 +607,24 @@ fun GameScreen(
                         winner!!.name,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = Color.White
                     )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.3f))
                     Text(
                         "Average: ${String.format("%.1f", winner!!.average)}",
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = Color.White
                     )
                     Text(
                         "Rounds: ${winner!!.roundsPlayed}",
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = Color.White
                     )
                     Text(
                         "Darts: ${winner!!.dartsThrown}",
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = Color.White
                     )
                 }
             },
@@ -655,7 +639,6 @@ fun GameScreen(
                     ) {
                         Button(
                             onClick = {
-                                // Lagre spillet før vi går til hovedmeny
                                 scope.launch {
                                     val players = playerViewModel.players.value
                                     val p1 = players.find { it.username == player1Name }
@@ -664,14 +647,11 @@ fun GameScreen(
                                     if (p1 != null && p2 != null) {
                                         val winnerId = if (winner == player1) p1.playerId else p2.playerId
 
-                                        val p1HighestScore = player1.lastThrow
-                                        val p2HighestScore = player2.lastThrow
-
                                         val player1Stats = GameStatsEntity(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = p1HighestScore,
+                                            highestScore = player1.lastThrow,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -681,7 +661,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = p2HighestScore,
+                                            highestScore = player2.lastThrow,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -698,7 +678,6 @@ fun GameScreen(
                                         )
                                     }
                                 }
-                                // Naviger til hovedmenyen
                                 navController.navigate("main_menu") {
                                     popUpTo("main_menu") { inclusive = true }
                                 }
@@ -712,7 +691,6 @@ fun GameScreen(
                         }
                         Button(
                             onClick = {
-                                // Lagre spillet før rematch
                                 scope.launch {
                                     val players = playerViewModel.players.value
                                     val p1 = players.find { it.username == player1Name }
@@ -721,14 +699,11 @@ fun GameScreen(
                                     if (p1 != null && p2 != null) {
                                         val winnerId = if (winner == player1) p1.playerId else p2.playerId
 
-                                        val p1HighestScore = player1.lastThrow
-                                        val p2HighestScore = player2.lastThrow
-
                                         val player1Stats = GameStatsEntity(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = p1HighestScore,
+                                            highestScore = player1.lastThrow,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -738,7 +713,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = p2HighestScore,
+                                            highestScore = player2.lastThrow,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -756,11 +731,9 @@ fun GameScreen(
                                     }
                                 }
 
-                                // Rematch - bytt hvem som starter
                                 firstPlayer = if (firstPlayer == 1) 2 else 1
                                 currentPlayer = firstPlayer
 
-                                // Reset game
                                 player1 = Player(player1Name)
                                 player2 = Player(player2Name)
                                 overallRound = 1
@@ -786,25 +759,32 @@ fun GameScreen(
                     }
                 }
             },
-            dismissButton = { }
+            dismissButton = { },
+            containerColor = Color(0xDD000000)
         )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(Color(0xFF2A2A2A)) // MØRK GRÅ BAKGRUNN
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Back button
         IconButton(
             onClick = { navController.popBackStack() },
-            modifier = Modifier.align(Alignment.Start)
+            modifier = Modifier
+                .align(Alignment.Start)
+                .size(48.dp)
+                .shadow(8.dp, CircleShape)
+                .background(Color(0xCC000000), CircleShape)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = Color(0xFF1A1A1A)
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
         }
 
@@ -815,7 +795,7 @@ fun GameScreen(
             PlayerCard(
                 player = player1,
                 isActive = currentPlayer == 1,
-                backgroundColor = if (currentPlayer == 1) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
+                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player1.score),
                 roundNumber = overallRound,
@@ -826,7 +806,7 @@ fun GameScreen(
             PlayerCard(
                 player = player2,
                 isActive = currentPlayer == 2,
-                backgroundColor = if (currentPlayer == 2) Color(0xFFFC1E69) else Color(0xFF1A1A1A),
+                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player2.score),
                 roundNumber = overallRound,
@@ -835,6 +815,7 @@ fun GameScreen(
             )
         }
 
+        // Throw buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -865,13 +846,13 @@ fun GameScreen(
             )
         }
 
+        // Score display
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(scoreDisplayHeight)
                 .padding(horizontal = 32.dp)
-                .background(Color(0xFF1A1A1A), RoundedCornerShape(25.dp))
-                .padding(vertical = 16.dp),
+                .background(Color(0xFF1A1A1A), RoundedCornerShape(25.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -886,19 +867,28 @@ fun GameScreen(
             )
         }
 
+        // Action buttons (Undo, Double, Triple) - SAMME STIL SOM NUM PAD
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFFFD700), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                .padding(1.dp),
+            horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
         ) {
+            val undoInteraction = remember { MutableInteractionSource() }
+            val isUndoPressed by undoInteraction.collectIsPressedAsState()
+
             Button(
                 onClick = { undoLastThrow() },
                 modifier = Modifier
                     .weight(1f)
                     .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFAA4C9E)
+                    containerColor = Color(0xFF505050) // MØRK GRÅ
                 ),
-                shape = RoundedCornerShape((actionButtonHeight.value * 0.5f).dp)
+                shape = RoundedCornerShape(6.dp),
+                border = if (isUndoPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                interactionSource = undoInteraction
             ) {
                 Text(
                     "↺ UNDO",
@@ -908,26 +898,20 @@ fun GameScreen(
                 )
             }
 
+            val doubleInteraction = remember { MutableInteractionSource() }
+            val isDoublePressed by doubleInteraction.collectIsPressedAsState()
+
             Button(
                 onClick = { multiplier = if (multiplier == 2) 1 else 2 },
                 modifier = Modifier
                     .weight(1f)
-                    .height(actionButtonHeight)
-                    .then(
-                        if (multiplier == 2) {
-                            Modifier.drawBehind {
-                                drawRoundRect(
-                                    color = Color(0xFFFC1E69),
-                                    cornerRadius = CornerRadius((actionButtonHeight.value * 0.5f).dp.toPx()),
-                                    style = Stroke(width = 4.dp.toPx())
-                                )
-                            }
-                        } else Modifier
-                    ),
+                    .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFDB735)
+                    containerColor = Color(0xFF505050) // MØRK GRÅ
                 ),
-                shape = RoundedCornerShape((actionButtonHeight.value * 0.5f).dp)
+                shape = RoundedCornerShape(6.dp),
+                border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                interactionSource = doubleInteraction
             ) {
                 Text(
                     "Double",
@@ -937,26 +921,20 @@ fun GameScreen(
                 )
             }
 
+            val tripleInteraction = remember { MutableInteractionSource() }
+            val isTriplePressed by tripleInteraction.collectIsPressedAsState()
+
             Button(
                 onClick = { multiplier = if (multiplier == 3) 1 else 3 },
                 modifier = Modifier
                     .weight(1f)
-                    .height(actionButtonHeight)
-                    .then(
-                        if (multiplier == 3) {
-                            Modifier.drawBehind {
-                                drawRoundRect(
-                                    color = Color(0xFFFC1E69),
-                                    cornerRadius = CornerRadius((actionButtonHeight.value * 0.5f).dp.toPx()),
-                                    style = Stroke(width = 4.dp.toPx())
-                                )
-                            }
-                        } else Modifier
-                    ),
+                    .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFCDDC39)
+                    containerColor = Color(0xFF505050) // MØRK GRÅ
                 ),
-                shape = RoundedCornerShape(actionButtonHeight * 0.5f)
+                shape = RoundedCornerShape(6.dp),
+                border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                interactionSource = tripleInteraction
             ) {
                 Text(
                     "Triple",
@@ -967,12 +945,17 @@ fun GameScreen(
             }
         }
 
+        // Number pad
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFFFD700), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                .padding(1.dp), // Padding gir gule linjer mellom knappene
+            verticalArrangement = Arrangement.spacedBy(1.dp) // GUL LINJE mellom rader
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp) // GUL LINJE mellom knapper
             ) {
                 for (i in 1..3) {
                     NumberButton(
@@ -987,7 +970,7 @@ fun GameScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 4..6) {
                     NumberButton(
@@ -1002,7 +985,7 @@ fun GameScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 7..9) {
                     NumberButton(
@@ -1017,8 +1000,11 @@ fun GameScreen(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
+                val clearInteraction = remember { MutableInteractionSource() }
+                val isClearPressed by clearInteraction.collectIsPressedAsState()
+
                 Button(
                     onClick = {
                         inputValue = ""
@@ -1028,9 +1014,11 @@ fun GameScreen(
                         .weight(1f)
                         .height(numberButtonHeight),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF808080)
+                        containerColor = Color(0xFF505050) // MØRK GRÅ
                     ),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                    interactionSource = clearInteraction
                 ) {
                     Text(
                         "CLR",
@@ -1048,6 +1036,9 @@ fun GameScreen(
                     fontSize = numberButtonFontSize
                 )
 
+                val confirmInteraction = remember { MutableInteractionSource() }
+                val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
+
                 Button(
                     onClick = {
                         if (isValidInput) {
@@ -1064,7 +1055,9 @@ fun GameScreen(
                         disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
                         else Color(0xFF4CAF50)
                     ),
-                    shape = RoundedCornerShape((numberButtonHeight.value * 0.29f).dp)
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                    interactionSource = confirmInteraction
                 ) {
                     Text(
                         text = if (inputValue.isEmpty()) "✓"
@@ -1093,7 +1086,21 @@ fun PlayerCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.height(height),
+        modifier = modifier
+            .height(height)
+            .shadow(8.dp, RoundedCornerShape((height.value * 0.09f).dp))
+            .then(
+                if (isActive) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        drawRoundRect(
+                            color = Color(0xFFFFD700), // GUL OUTLINE
+                            cornerRadius = CornerRadius((height.value * 0.09f).dp.toPx()),
+                            style = Stroke(width = 3.dp.toPx())
+                        )
+                    }
+                } else Modifier
+            ),
         shape = RoundedCornerShape((height.value * 0.09f).dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
@@ -1114,17 +1121,16 @@ fun PlayerCard(
                     if (isActive) {
                         Text(
                             text = "→",
-                            fontSize = (fontSize.value * 0.18f).sp,
+                            fontSize = (fontSize.value * 0.25f).sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
-                            modifier = Modifier
-                                .padding(end = 4.dp)
-                                //.offset(y = (-4).dp)
+                            modifier = Modifier.padding(end = 4.dp)
+                                .offset(y = (-2).dp)
                         )
                     }
                     Text(
                         text = player.name,
-                        fontSize = (fontSize.value * 0.3f).sp,
+                        fontSize = (fontSize.value * 0.35f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1141,11 +1147,11 @@ fun PlayerCard(
             )
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "LAST: ${player.lastThrow}",
-                    fontSize = (fontSize.value * 0.2f).sp,
+                    fontSize = (fontSize.value * 0.22f).sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -1154,7 +1160,7 @@ fun PlayerCard(
 
                 Text(
                     text = checkout,
-                    fontSize = (fontSize.value * 0.2f).sp,
+                    fontSize = (fontSize.value * 0.22f).sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -1167,21 +1173,21 @@ fun PlayerCard(
                 ) {
                     Text(
                         text = "AVG\n${String.format("%.1f", player.average)}",
-                        fontSize = (fontSize.value * 0.25f).sp,
+                        fontSize = (fontSize.value * 0.28f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "ROUND\n$roundNumber",
-                        fontSize = (fontSize.value * 0.25f).sp,
+                        fontSize = (fontSize.value * 0.28f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "DARTS\n${player.dartsThrown}",
-                        fontSize = (fontSize.value * 0.25f).sp,
+                        fontSize = (fontSize.value * 0.28f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -1197,8 +1203,8 @@ fun ThrowButton(
     label: String,
     value: Int?,
     isActive: Boolean = false,
-    height: Dp, // ← RESPONSIVE
-    fontSize: TextUnit, // ← RESPONSIVE
+    height: Dp,
+    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     val cornerRadius = height * 0.5f
@@ -1212,9 +1218,9 @@ fun ThrowButton(
                     Modifier.drawWithContent {
                         drawContent()
                         drawRoundRect(
-                            color = Color(0xFFFC1E69),
-                            cornerRadius = CornerRadius(cornerRadius.toPx()), // ← FIXED
-                            style = Stroke(width = 5.dp.toPx()) // ← REDUCED from 4.dp
+                            color = Color(0xFFFFD700),
+                            cornerRadius = CornerRadius(cornerRadius.toPx()),
+                            style = Stroke(width = 1.5.dp.toPx()) // ⬅️ ENDRET fra 1.dp til 1.5.dp
                         )
                     }
                 } else Modifier
@@ -1222,12 +1228,12 @@ fun ThrowButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF6B6B6B)
         ),
-        shape = RoundedCornerShape(cornerRadius), // ← RESPONSIVE
+        shape = RoundedCornerShape(cornerRadius),
         contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
     ) {
         Text(
             text = "$label ${value ?: ""}",
-            fontSize = fontSize, // ← RESPONSIVE
+            fontSize = fontSize,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
@@ -1242,13 +1248,18 @@ fun NumberButton(
     fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+
     Button(
         onClick = onClick,
         modifier = modifier.height(height),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFFC1E69)
+            containerColor = Color(0xFF505050) // MØRK GRÅ
         ),
-        shape = RoundedCornerShape((height.value * 0.29f).dp)
+        shape = RoundedCornerShape(6.dp), // RUNDE HJØRNER
+        border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+        interactionSource = interaction
     ) {
         Text(
             text = number.toString(),
