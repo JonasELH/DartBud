@@ -499,7 +499,7 @@ fun GameSettingsScreen(
                         ),
                         shape = RoundedCornerShape(35.dp)
                     )
-                    .drawWithContent { // ⬅️ FLYTT UTENFOR then() for alltid-outline
+                    .drawWithContent { //
                         drawContent()
                         drawRoundRect(
                             color = if (isStartPressed) Color(0xFF76E331) else Color(0xFFFFD700), // ⬅️ Skifter farge når trykket
