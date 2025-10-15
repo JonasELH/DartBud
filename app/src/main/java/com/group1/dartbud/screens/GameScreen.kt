@@ -1,5 +1,6 @@
 package com.group1.dartbud.screens
 
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
@@ -846,24 +848,35 @@ fun GameScreen(
             )
         }
 
-        // Score display
+        // Score display - DIGITAL LED STIL
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(scoreDisplayHeight)
                 .padding(horizontal = 32.dp)
-                .background(Color(0xFF1A1A1A), RoundedCornerShape(25.dp)),
+                .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFF00FF00))
+                .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
+                .drawWithContent {
+                    drawContent()
+                    drawRoundRect(
+                        color = Color(0xFF333333),
+                        cornerRadius = CornerRadius(15.dp.toPx()),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                },
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = if (inputValue.isNotEmpty()) {
-                    "Score: $inputValue ${if (multiplier > 1) "×$multiplier" else ""}"
+                    "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
                 } else {
-                    "Score: "
+                    "888"
                 },
-                fontSize = scoreDisplayFontSize,
+                fontSize = (scoreDisplayFontSize.value * 1.6f).sp, // MYE STØRRE
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, // MONOSPACE
+                color = if (inputValue.isNotEmpty()) Color(0xFF00FF00) else Color(0xFF003300), // LED GRØNN
+                letterSpacing = 2.sp // EKSTRA SPACING
             )
         }
 
@@ -871,7 +884,7 @@ fun GameScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFD700), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
                 .padding(1.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
         ) {
@@ -884,18 +897,31 @@ fun GameScreen(
                     .weight(1f)
                     .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050) // MØRK GRÅ
+                    containerColor = Color(0xFF505050)
                 ),
                 shape = RoundedCornerShape(6.dp),
-                border = if (isUndoPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
                 interactionSource = undoInteraction
             ) {
-                Text(
-                    "↺ UNDO",
-                    fontSize = actionButtonFontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "↺",
+                        fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.offset(y = (-2).dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "UNDO",
+                        fontSize = actionButtonFontSize,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
 
             val doubleInteraction = remember { MutableInteractionSource() }
@@ -907,10 +933,10 @@ fun GameScreen(
                     .weight(1f)
                     .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050) // MØRK GRÅ
+                    containerColor = Color(0xFF505050)
                 ),
                 shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
                 interactionSource = doubleInteraction
             ) {
                 Text(
@@ -930,10 +956,10 @@ fun GameScreen(
                     .weight(1f)
                     .height(actionButtonHeight),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050) // MØRK GRÅ
+                    containerColor = Color(0xFF505050)
                 ),
                 shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
                 interactionSource = tripleInteraction
             ) {
                 Text(
@@ -949,13 +975,13 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFD700), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
-                .padding(1.dp), // Padding gir gule linjer mellom knappene
-            verticalArrangement = Arrangement.spacedBy(1.dp) // GUL LINJE mellom rader
+                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // BAKGRUNN
+                .padding(1.dp), // Padding gir linjer mellom knappene
+            verticalArrangement = Arrangement.spacedBy(1.dp) // LINJE mellom rader
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp) // GUL LINJE mellom knapper
+                horizontalArrangement = Arrangement.spacedBy(1.dp) // LINJE mellom knapper
             ) {
                 for (i in 1..3) {
                     NumberButton(
@@ -1088,13 +1114,17 @@ fun PlayerCard(
     Card(
         modifier = modifier
             .height(height)
-            .shadow(8.dp, RoundedCornerShape((height.value * 0.09f).dp))
+            .shadow(
+                elevation = if (isActive) 16.dp else 8.dp, // MER GLOW når aktiv
+                shape = RoundedCornerShape((height.value * 0.09f).dp),
+                spotColor = if (isActive) Color(0xEBF148E8) else Color.Black // ⬅️ Rosa glow
+            )
             .then(
                 if (isActive) {
                     Modifier.drawWithContent {
                         drawContent()
                         drawRoundRect(
-                            color = Color(0xFFFFD700), // GUL OUTLINE
+                            color = Color(0xEBF148E8), // OUTLINE
                             cornerRadius = CornerRadius((height.value * 0.09f).dp.toPx()),
                             style = Stroke(width = 3.dp.toPx())
                         )
@@ -1102,96 +1132,119 @@ fun PlayerCard(
                 } else Modifier
             ),
         shape = RoundedCornerShape((height.value * 0.09f).dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent // ⬅️ TRANSPARENT for gradient
+        )
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding((height.value * 0.055f).dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .background(
+                    brush = if (isActive) {
+                        // GRADIENT når aktiv
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF505050),
+                                Color(0xFF3A3A3A),
+                                Color(0xFF505050)
+                            )
+                        )
+                    } else {
+                        //
+                        androidx.compose.ui.graphics.SolidColor(backgroundColor)
+                    }
+                )
         ) {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding((height.value * 0.055f).dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (isActive) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isActive) {
+                            Text(
+                                text = "→",
+                                fontSize = (fontSize.value * 0.25f).sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White, // Farge på pil-indikator
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .offset(y = (-2).dp)
+                            )
+                        }
                         Text(
-                            text = "→",
-                            fontSize = (fontSize.value * 0.25f).sp,
+                            text = player.name,
+                            fontSize = (fontSize.value * 0.35f).sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.padding(end = 4.dp)
-                                .offset(y = (-2).dp)
+                            color = Color.White
                         )
                     }
-                    Text(
-                        text = player.name,
-                        fontSize = (fontSize.value * 0.35f).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                 }
-            }
 
-            Text(
-                text = "${player.score}",
-                fontSize = fontSize,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
                 Text(
-                    text = "LAST: ${player.lastThrow}",
-                    fontSize = (fontSize.value * 0.22f).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    text = "${player.score}",
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isActive) Color.White else Color.White, // Endre farge når det er aktiv spiller sin tur??
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text(
-                    text = checkout,
-                    fontSize = (fontSize.value * 0.22f).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "AVG\n${String.format("%.1f", player.average)}",
-                        fontSize = (fontSize.value * 0.28f).sp,
+                        text = "LAST: ${player.lastThrow}",
+                        fontSize = (fontSize.value * 0.22f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
+
                     Text(
-                        text = "ROUND\n$roundNumber",
-                        fontSize = (fontSize.value * 0.28f).sp,
+                        text = checkout,
+                        fontSize = (fontSize.value * 0.22f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Text(
-                        text = "DARTS\n${player.dartsThrown}",
-                        fontSize = (fontSize.value * 0.28f).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "AVG\n${String.format("%.1f", player.average)}",
+                            fontSize = (fontSize.value * 0.28f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "ROUND\n$roundNumber",
+                            fontSize = (fontSize.value * 0.28f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "DARTS\n${player.dartsThrown}",
+                            fontSize = (fontSize.value * 0.28f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -1211,24 +1264,14 @@ fun ThrowButton(
 
     Button(
         onClick = { },
-        modifier = modifier
-            .height(height)
-            .then(
-                if (isActive) {
-                    Modifier.drawWithContent {
-                        drawContent()
-                        drawRoundRect(
-                            color = Color(0xFFFFD700),
-                            cornerRadius = CornerRadius(cornerRadius.toPx()),
-                            style = Stroke(width = 1.5.dp.toPx()) // ⬅️ ENDRET fra 1.dp til 1.5.dp
-                        )
-                    }
-                } else Modifier
-            ),
+        modifier = modifier.height(height),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF6B6B6B)
         ),
         shape = RoundedCornerShape(cornerRadius),
+        border = if (isActive) {
+            BorderStroke(1.5.dp, Color(0xEBF148E8))
+        } else null,
         contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
     ) {
         Text(
@@ -1255,16 +1298,17 @@ fun NumberButton(
         onClick = onClick,
         modifier = modifier.height(height),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF505050) // MØRK GRÅ
+            containerColor = Color(0xFF505050)
         ),
-        shape = RoundedCornerShape(6.dp), // RUNDE HJØRNER
+        shape = RoundedCornerShape(6.dp),
         border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
         interactionSource = interaction
     ) {
         Text(
             text = number.toString(),
-            fontSize = fontSize,
-            fontWeight = FontWeight.Bold,
+            fontSize = (fontSize.value * 1.3f).sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, // ⬅️ MONOSPACE
             color = Color.White
         )
     }
