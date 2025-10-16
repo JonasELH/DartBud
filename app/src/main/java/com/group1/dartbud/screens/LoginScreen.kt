@@ -1,5 +1,6 @@
 package com.group1.dartbud.screens
 
+import com.group1.dartbud.viewmodel.GameViewModel
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,7 +36,8 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     navController: NavController,
     authViewModel: AuthViewModel = viewModel(),
-    playerViewModel: PlayerViewModel = viewModel()
+    playerViewModel: PlayerViewModel = viewModel(),
+    gameViewModel: GameViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -73,6 +75,7 @@ fun LoginScreen(
                 }
 
                 playerViewModel.setGoogleUserId(user.uid)
+                gameViewModel.setGoogleUserId(user.uid)
 
                 navController.navigate("main_menu") {
                     popUpTo("login") { inclusive = true }

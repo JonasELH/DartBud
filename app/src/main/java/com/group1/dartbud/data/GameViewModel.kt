@@ -1,5 +1,7 @@
 package com.group1.dartbud.viewmodel
 
+import com.group1.dartbud.data.FirestoreRepository
+import com.group1.dartbud.data.FirestoreGame
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,17 +12,41 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
+    private val firestoreRepository = FirestoreRepository()
+    private var currentGoogleUserId: String? = null
+
     private val repository: GameRepository
+    private val playerRepository: PlayerRepository
+
     private val _games = MutableStateFlow<List<GameEntity>>(emptyList())
     val games: StateFlow<List<GameEntity>> = _games.asStateFlow()
 
     init {
         val database = DartBudDatabase.getDatabase(application)
         repository = GameRepository(database.gameDao(), database.gameStatsDao())
+        playerRepository = PlayerRepository(database.playerDao())
 
         viewModelScope.launch {
             repository.allGames.collect { gameList ->
                 _games.value = gameList
+            }
+        }
+    }
+
+    fun setGoogleUserId(userId: String?) {
+        currentGoogleUserId = userId
+        if (userId != null) {
+            // Synkroniser spill fra Firestore
+            syncGamesFromFirestore(userId)
+        }
+    }
+
+    private fun syncGamesFromFirestore(userId: String) {
+        viewModelScope.launch {
+            val result = firestoreRepository.getUserGames(userId)
+            result.onSuccess { firestoreGames ->
+                // Her kan vi vise disse spillene i UI uten å lagre i Room
+                // Eller vi kan velge å også lagre dem i Room som cache
             }
         }
     }
@@ -35,20 +61,68 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         player2Stats: GameStatsEntity
     ) {
         viewModelScope.launch {
-            val game = GameEntity(
-                player1Id = player1Id,
-                player2Id = player2Id,
-                winnerId = winnerId,
-                doubleIn = doubleIn,
-                doubleOut = doubleOut
-            )
-            val gameId = repository.insertGame(game)
+            try {
+                // Opprett GameEntity - UTEN playedAt hvis det ikke finnes
+                val game = GameEntity(
+                    gameId = 0,
+                    player1Id = player1Id,
+                    player2Id = player2Id,
+                    winnerId = winnerId,
+                    doubleIn = doubleIn,
+                    doubleOut = doubleOut
+                )
 
-            // Save stats for both players
-            repository.insertStats(player1Stats.copy(gameId = gameId.toInt()))
-            repository.insertStats(player2Stats.copy(gameId = gameId.toInt()))
+                // Lagre game i Room
+                val insertedGameId = repository.insertGame(game)
+
+                // Lagre stats med riktig gameId
+                val player1StatsWithGameId = player1Stats.copy(gameId = insertedGameId.toInt())
+                val player2StatsWithGameId = player2Stats.copy(gameId = insertedGameId.toInt())
+
+                repository.insertStats(player1StatsWithGameId)
+                repository.insertStats(player2StatsWithGameId)
+
+                // Hvis bruker er innlogget, lagre også i Firestore
+                currentGoogleUserId?.let { userId ->
+                    // Hent spillere
+                    val player1 = playerRepository.getPlayerById(player1Id)
+                    val player2 = playerRepository.getPlayerById(player2Id)
+                    val winner = playerRepository.getPlayerById(winnerId)
+
+                    if (player1 != null && player2 != null && winner != null) {
+                        val firestoreGame = FirestoreGame(
+                            gameId = insertedGameId.toString(),
+                            player1Id = player1Id.toString(),
+                            player2Id = player2Id.toString(),
+                            player1Name = player1.username,
+                            player2Name = player2.username,
+                            winnerId = winnerId.toString(),
+                            winnerName = winner.username,
+                            doubleIn = doubleIn,
+                            doubleOut = doubleOut,
+                            player1Average = player1Stats.average,
+                            player2Average = player2Stats.average,
+                            player1HighestScore = player1Stats.highestScore,
+                            player2HighestScore = player2Stats.highestScore,
+                            player1DartsThrown = player1Stats.dartsThrown,
+                            player2DartsThrown = player2Stats.dartsThrown,
+                            player1RoundsPlayed = player1Stats.roundsPlayed,
+                            player2RoundsPlayed = player2Stats.roundsPlayed,
+                            player1FinalScore = player1Stats.finalScore,
+                            player2FinalScore = player2Stats.finalScore,
+                            playedAt = System.currentTimeMillis()
+                        )
+
+                        firestoreRepository.saveGame(userId, firestoreGame)
+                    }
+                }
+            } catch (e: Exception) {
+                // Håndter feil
+                e.printStackTrace()
+            }
         }
     }
+
     suspend fun getStatsByGame(gameId: Int): List<GameStatsEntity> {
         return repository.getStatsByGame(gameId)
     }

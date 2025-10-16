@@ -1,7 +1,8 @@
 package com.group1.dartbud.screens
 
 import androidx.compose.runtime.remember
-
+import com.group1.dartbud.viewmodel.PlayerViewModel
+import com.group1.dartbud.viewmodel.GameViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -35,7 +36,9 @@ import com.group1.dartbud.viewmodel.AuthViewModel
 fun MainMenuScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    playerViewModel: PlayerViewModel = viewModel(),
+    gameViewModel: GameViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val currentUser by authViewModel.currentUser.collectAsState()
@@ -55,6 +58,8 @@ fun MainMenuScreen(
         IconButton(
             onClick = {
                 authViewModel.signOut(context)
+                playerViewModel.setGoogleUserId(null)
+                gameViewModel.setGoogleUserId(null)
                 navController.navigate("login") {
                     popUpTo(0) { inclusive = true }
                 }

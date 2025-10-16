@@ -1,5 +1,7 @@
 package com.group1.dartbud.viewmodel
 
+import com.group1.dartbud.data.FirestoreRepository
+import com.group1.dartbud.data.FirestorePlayerProfile
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,10 +15,11 @@ import kotlinx.coroutines.launch
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: PlayerRepository
+    private val firestoreRepository = FirestoreRepository()
+
     private val _players = MutableStateFlow<List<PlayerEntity>>(emptyList())
     val players: StateFlow<List<PlayerEntity>> = _players.asStateFlow()
 
-    // Nye StateFlows for å gruppere spillere
     private val _userProfiles = MutableStateFlow<List<PlayerEntity>>(emptyList())
     val userProfiles: StateFlow<List<PlayerEntity>> = _userProfiles.asStateFlow()
 
@@ -36,50 +39,15 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // ===== EKSISTERENDE METODER =====
+    // ===== GOOGLE SIGN-IN MED FIRESTORE SYNKRONISERING =====
 
-    fun addPlayer(username: String) {
-        viewModelScope.launch {
-            val existing = repository.getPlayerByUsername(username)
-            if (existing == null) {
-                repository.insertPlayer(
-                    PlayerEntity(username = username)
-                )
-            }
-        }
-    }
-
-    fun updatePlayer(player: PlayerEntity) {
-        viewModelScope.launch {
-            repository.updatePlayer(player)
-        }
-    }
-
-    fun deletePlayer(player: PlayerEntity) {
-        viewModelScope.launch {
-            repository.deletePlayer(player)
-        }
-    }
-
-    fun deletePlayerByUsername(username: String) {
-        viewModelScope.launch {
-            val player = repository.getPlayerByUsername(username)
-            player?.let {
-                repository.deletePlayer(it)
-            }
-        }
-    }
-
-    // ===== NYE METODER for Google Sign-In =====
-
-    /**
-     * Sett inn den innloggede brukerens Google User ID
-     * Dette triggerer lasting av brukerens profiler
-     */
     fun setGoogleUserId(googleUserId: String?) {
         _currentGoogleUserId.value = googleUserId
 
         if (googleUserId != null) {
+            // Synkroniser fra Firestore til Room
+            syncFromFirestore(googleUserId)
+
             // Last inn brukerens profiler
             viewModelScope.launch {
                 repository.getUserProfiles(googleUserId).collect { profiles ->
@@ -104,9 +72,32 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Opprett primærprofil for ny Google-bruker
-     */
+    private fun syncFromFirestore(userId: String) {
+        viewModelScope.launch {
+            val result = firestoreRepository.getUserProfiles(userId)
+            result.onSuccess { firestoreProfiles ->
+                // Oppdater Room med data fra Firestore
+                firestoreProfiles.forEach { fsProfile ->
+                    val existingPlayer = repository.getPlayerByUsername(fsProfile.username)
+
+                    if (existingPlayer == null) {
+                        // Opprett ny spiller i Room
+                        val newPlayer = PlayerEntity(
+                            playerId = 0,
+                            username = fsProfile.username,
+                            userEmail = fsProfile.email,
+                            googleUserId = userId,
+                            isUserProfile = true,
+                            isPrimaryProfile = fsProfile.isPrimaryProfile,
+                            photoUrl = fsProfile.photoUrl
+                        )
+                        repository.insertPlayer(newPlayer)
+                    }
+                }
+            }
+        }
+    }
+
     fun createPrimaryProfileForGoogleUser(
         googleUserId: String,
         displayName: String,
@@ -114,45 +105,56 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         photoUrl: String? = null
     ) {
         viewModelScope.launch {
-            // Sjekk om profil allerede finnes
             if (!repository.hasPrimaryProfile(googleUserId)) {
+                // Lagre i Room
                 repository.createPrimaryProfileForGoogleUser(
                     googleUserId = googleUserId,
                     displayName = displayName,
                     email = email,
                     photoUrl = photoUrl
                 )
+
+                // Lagre i Firestore
+                val firestoreProfile = FirestorePlayerProfile(
+                    profileId = googleUserId, // Bruker googleUserId som profileId for primærprofil
+                    username = displayName,
+                    email = email,
+                    isPrimaryProfile = true,
+                    photoUrl = photoUrl
+                )
+                firestoreRepository.saveUserProfile(googleUserId, firestoreProfile)
             }
         }
     }
 
-    /**
-     * Sjekk om bruker har primærprofil
-     */
     suspend fun hasPrimaryProfile(googleUserId: String): Boolean {
         return repository.hasPrimaryProfile(googleUserId)
     }
 
-    /**
-     * Legg til en ny profil for innlogget bruker
-     */
     fun addUserProfile(googleUserId: String, username: String, email: String) {
         viewModelScope.launch {
-            repository.insertPlayer(
-                PlayerEntity(
-                    username = username,
-                    userEmail = email,
-                    googleUserId = googleUserId,
-                    isUserProfile = true,
-                    isPrimaryProfile = false
-                )
+            // Lagre i Room
+            val newPlayer = PlayerEntity(
+                username = username,
+                userEmail = email,
+                googleUserId = googleUserId,
+                isUserProfile = true,
+                isPrimaryProfile = false
             )
+            val insertedId = repository.insertPlayer(newPlayer)
+
+            // Lagre i Firestore
+            val firestoreProfile = FirestorePlayerProfile(
+                profileId = insertedId.toString(),
+                username = username,
+                email = email,
+                isPrimaryProfile = false,
+                photoUrl = null
+            )
+            firestoreRepository.saveUserProfile(googleUserId, firestoreProfile)
         }
     }
 
-    /**
-     * Legg til lokal spiller (ikke innlogget)
-     */
     fun addLocalPlayer(username: String) {
         viewModelScope.launch {
             repository.insertPlayer(
@@ -161,6 +163,58 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     isUserProfile = false
                 )
             )
+            // Lokale spillere lagres IKKE i Firestore
+        }
+    }
+
+    // ===== GENERELLE METODER =====
+
+    fun addPlayer(username: String) {
+        viewModelScope.launch {
+            val existing = repository.getPlayerByUsername(username)
+            if (existing == null) {
+                repository.insertPlayer(
+                    PlayerEntity(username = username)
+                )
+            }
+        }
+    }
+
+    fun updatePlayer(player: PlayerEntity) {
+        viewModelScope.launch {
+            repository.updatePlayer(player)
+
+            // Hvis det er en Google-profil, oppdater også i Firestore
+            if (player.googleUserId != null) {
+                firestoreRepository.updateUserProfile(
+                    userId = player.googleUserId,
+                    profileId = player.playerId.toString(),
+                    username = player.username
+                )
+            }
+        }
+    }
+
+    fun deletePlayer(player: PlayerEntity) {
+        viewModelScope.launch {
+            repository.deletePlayer(player)
+
+            // Hvis det er en Google-profil, slett også fra Firestore
+            if (player.googleUserId != null) {
+                firestoreRepository.deleteUserProfile(
+                    userId = player.googleUserId,
+                    profileId = player.playerId.toString()
+                )
+            }
+        }
+    }
+
+    fun deletePlayerByUsername(username: String) {
+        viewModelScope.launch {
+            val player = repository.getPlayerByUsername(username)
+            player?.let {
+                deletePlayer(it)
+            }
         }
     }
 }
