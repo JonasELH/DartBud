@@ -1,5 +1,6 @@
 package com.group1.dartbud
 
+import androidx.compose.runtime.LaunchedEffect
 import com.group1.dartbud.screens.ManagePlayersScreen
 import com.group1.dartbud.screens.CreatePlayerScreen
 import com.group1.dartbud.screens.GameHistoryScreen
@@ -47,6 +48,12 @@ fun DartBudApp() {
     val playerViewModel: PlayerViewModel = viewModel()
     val gameViewModel: GameViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        authViewModel.googleUserId.collect { userId ->
+            gameViewModel.setGoogleUserId(userId)
+        }
+    }
 
     Scaffold { innerPadding ->
         NavHost(

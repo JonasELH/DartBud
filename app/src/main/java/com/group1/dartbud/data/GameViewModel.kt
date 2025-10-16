@@ -62,6 +62,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             try {
+
                 // Opprett GameEntity - UTEN playedAt hvis det ikke finnes
                 val game = GameEntity(
                     gameId = 0,

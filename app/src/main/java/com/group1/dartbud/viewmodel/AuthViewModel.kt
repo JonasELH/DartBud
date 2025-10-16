@@ -23,12 +23,22 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
+    // ⬇️ NYTT: Google User ID flow
+    private val _googleUserId = MutableStateFlow<String?>(auth.currentUser?.uid)
+    val googleUserId: StateFlow<String?> = _googleUserId.asStateFlow()
+
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     init {
-        // Sjekk om bruker allerede er innlogget
         _currentUser.value = auth.currentUser
+
+        // Observer currentUser og oppdater googleUserId
+        viewModelScope.launch {
+            currentUser.collect { user ->
+                _googleUserId.value = user?.uid
+            }
+        }
     }
 
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
