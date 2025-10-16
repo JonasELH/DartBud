@@ -75,7 +75,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.compose.runtime:runtime-livedata:1.6.1")
-    // Firebase BoM - OPPDATER TIL 34.3.0
+
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
 
     // Firebase produkter
