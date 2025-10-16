@@ -854,7 +854,7 @@ fun GameScreen(
                 .fillMaxWidth()
                 .height(scoreDisplayHeight)
                 .padding(horizontal = 32.dp)
-                .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFF00FF00))
+                .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFFF5DF20))
                 .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
                 .drawWithContent {
                     drawContent()
@@ -870,13 +870,13 @@ fun GameScreen(
                 text = if (inputValue.isNotEmpty()) {
                     "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
                 } else {
-                    "888"
+                    "..."
                 },
-                fontSize = (scoreDisplayFontSize.value * 1.6f).sp, // MYE STØRRE
+                fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, // MONOSPACE
-                color = if (inputValue.isNotEmpty()) Color(0xFF00FF00) else Color(0xFF003300), // LED GRØNN
-                letterSpacing = 2.sp // EKSTRA SPACING
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B), // LED
+
             )
         }
 
