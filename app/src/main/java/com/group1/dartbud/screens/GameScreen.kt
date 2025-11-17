@@ -41,6 +41,7 @@ data class Player(
     val name: String,
     var score: Int = 501,
     var lastThrow: Int = 0,
+    var highestScore: Int = 0,
     var average: Double = 0.0,
     var roundsPlayed: Int = 0,
     var dartsThrown: Int = 0,
@@ -421,6 +422,7 @@ fun GameScreen(
 
                         player1 = player1.copy(
                             lastThrow = total,
+                            highestScore = maxOf(player1.highestScore, total),
                             roundsPlayed = player1.roundsPlayed + 1,
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
@@ -450,6 +452,7 @@ fun GameScreen(
 
                         player2 = player2.copy(
                             lastThrow = total,
+                            highestScore = maxOf(player2.highestScore, total),
                             roundsPlayed = player2.roundsPlayed + 1,
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
@@ -653,7 +656,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = player1.lastThrow,
+                                            highestScore = player1.highestScore,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -663,7 +666,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = player2.lastThrow,
+                                            highestScore = player2.highestScore,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -705,7 +708,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = player1.lastThrow,
+                                            highestScore = player1.highestScore,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -715,7 +718,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = player2.lastThrow,
+                                            highestScore = player2.highestScore,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -808,7 +811,7 @@ fun GameScreen(
             PlayerCard(
                 player = player2,
                 isActive = currentPlayer == 2,
-                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                backgroundColor = Color(0xFF505050),
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player2.score),
                 roundNumber = overallRound,
