@@ -1033,7 +1033,7 @@ fun GameScreen(
                         containerColor = Color(0xFF505050)
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    border = if (isUndoPressed) BorderStroke(3.dp, Color(0xFFB2073F)) else null,
                     interactionSource = undoInteraction
                 ) {
                     Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
@@ -1069,7 +1069,10 @@ fun GameScreen(
                         containerColor = Color(0xFF505050)
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(
+                        0xFFDECA2A
+                    )
+                    ) else null,
                     interactionSource = doubleInteraction
                 ) {
                     Text(
@@ -1092,7 +1095,10 @@ fun GameScreen(
                         containerColor = Color(0xFF505050)
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(
+                        0xFFDECA2A
+                    )
+                    ) else null,
                     interactionSource = tripleInteraction
                 ) {
                     Text(
