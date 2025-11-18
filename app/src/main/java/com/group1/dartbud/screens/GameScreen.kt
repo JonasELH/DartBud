@@ -21,10 +21,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
@@ -32,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -40,22 +37,23 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.LocalDensity
 
 data class Player(
     val name: String,
     var score: Int = 501,
     var lastThrow: Int = 0,
+    var highestScore: Int = 0,
     var average: Double = 0.0,
     var roundsPlayed: Int = 0,
     var dartsThrown: Int = 0,
     var hasScored: Boolean = false
 )
-
 // Forberedelse til skjermstørrelse-tilpassing
+
 fun TextUnit.coerceAtMost(maximumValue: TextUnit): TextUnit {
     return if (this.value > maximumValue.value) maximumValue else this
 }
-
 @Composable
 fun GameScreen(
     navController: NavController,
@@ -106,6 +104,9 @@ fun GameScreen(
     var bustMessage by remember { mutableStateOf("") }
     var showWinDialog by remember { mutableStateOf(false) }
     var winner by remember { mutableStateOf<Player?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) }
+    var player2RoundHistory by remember { mutableStateOf(listOf<Int>()) }
 
     val currentInputScore = if (inputValue.isNotEmpty()) {
         (inputValue.toIntOrNull() ?: 0) * multiplier
@@ -289,7 +290,10 @@ fun GameScreen(
 
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
-                    player1 = player1.copy(score = newScore)
+                    player1 = player1.copy(
+                        score = newScore,
+                        dartsThrown = player1.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player1 = player1.copy(hasScored = true)
@@ -314,7 +318,10 @@ fun GameScreen(
                     }
                 } else {
                     val newScore = player2.score - throwValue
-                    player2 = player2.copy(score = newScore)
+                    player2 = player2.copy(
+                        score = newScore,
+                        dartsThrown = player2.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player2 = player2.copy(hasScored = true)
@@ -347,7 +354,10 @@ fun GameScreen(
 
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
-                    player1 = player1.copy(score = newScore)
+                    player1 = player1.copy(
+                        score = newScore,
+                        dartsThrown = player1.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player1 = player1.copy(hasScored = true)
@@ -375,7 +385,10 @@ fun GameScreen(
                     }
                 } else {
                     val newScore = player2.score - throwValue
-                    player2 = player2.copy(score = newScore)
+                    player2 = player2.copy(
+                        score = newScore,
+                        dartsThrown = player2.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player2 = player2.copy(hasScored = true)
@@ -426,14 +439,16 @@ fun GameScreen(
                         showBustDialog = true
                         player1 = player1.copy(score = player1.score + total)
                     } else {
-                        val newDartsThrown = player1.dartsThrown + 3
+                        val newDartsThrown = player1.dartsThrown + 1
 
                         player1 = player1.copy(
                             lastThrow = total,
+                            highestScore = maxOf(player1.highestScore, total),
                             roundsPlayed = player1.roundsPlayed + 1,
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
+                        player1RoundHistory = player1RoundHistory + total
 
                         if (newScore == 0) {
                             winner = player1
@@ -455,14 +470,17 @@ fun GameScreen(
                         showBustDialog = true
                         player2 = player2.copy(score = player2.score + total)
                     } else {
-                        val newDartsThrown = player2.dartsThrown + 3
+                        val newDartsThrown = player2.dartsThrown + 1
 
                         player2 = player2.copy(
                             lastThrow = total,
+                            highestScore = maxOf(player2.highestScore, total),
                             roundsPlayed = player2.roundsPlayed + 1,
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
+                        // Legg til i historikk
+                        player2RoundHistory = player2RoundHistory + total
 
                         if (newScore == 0) {
                             winner = player2
@@ -490,25 +508,50 @@ fun GameScreen(
     fun undoLastThrow() {
         when (currentThrow) {
             1 -> {
+                // Undo hele forrige runde (alle 3 darts)
                 if (throw1 == null && throw2 == null && throw3 == null) {
                     currentPlayer = if (currentPlayer == 1) 2 else 1
 
-                    if (currentPlayer == 1 && player1.lastThrow > 0) {
-                        val newScore = player1.score + player1.lastThrow
+                    if (currentPlayer == 1 && player1RoundHistory.isNotEmpty()) {
+                        // Hent siste runde fra historikk
+                        val lastRound = player1RoundHistory.last()
+                        player1RoundHistory = player1RoundHistory.dropLast(1)
+
+                        val newScore = player1.score + lastRound
                         val newDartsThrown = maxOf(0, player1.dartsThrown - 3)
+
+                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
+                        val newLastThrow = if (player1RoundHistory.isNotEmpty()) {
+                            player1RoundHistory.last()
+                        } else {
+                            0
+                        }
+
                         player1 = player1.copy(
                             score = newScore,
-                            lastThrow = 0,
+                            lastThrow = newLastThrow,
                             roundsPlayed = maxOf(0, player1.roundsPlayed - 1),
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
-                    } else if (currentPlayer == 2 && player2.lastThrow > 0) {
-                        val newScore = player2.score + player2.lastThrow
+                    } else if (currentPlayer == 2 && player2RoundHistory.isNotEmpty()) {
+                        // Hent siste runde fra historikk
+                        val lastRound = player2RoundHistory.last()
+                        player2RoundHistory = player2RoundHistory.dropLast(1)
+
+                        val newScore = player2.score + lastRound
                         val newDartsThrown = maxOf(0, player2.dartsThrown - 3)
+
+                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
+                        val newLastThrow = if (player2RoundHistory.isNotEmpty()) {
+                            player2RoundHistory.last()
+                        } else {
+                            0
+                        }
+
                         player2 = player2.copy(
                             score = newScore,
-                            lastThrow = 0,
+                            lastThrow = newLastThrow,
                             roundsPlayed = maxOf(0, player2.roundsPlayed - 1),
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
@@ -519,11 +562,18 @@ fun GameScreen(
                 }
             }
             2 -> {
+                // Undo dart 1 (bare 1 dart kastet så langt)
                 if (throw1 != null) {
                     if (currentPlayer == 1) {
-                        player1 = player1.copy(score = player1.score + (throw1 ?: 0))
+                        player1 = player1.copy(
+                            score = player1.score + (throw1 ?: 0),
+                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
+                        )
                     } else {
-                        player2 = player2.copy(score = player2.score + (throw1 ?: 0))
+                        player2 = player2.copy(
+                            score = player2.score + (throw1 ?: 0),
+                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
+                        )
                     }
                 }
                 throw1 = null
@@ -531,11 +581,18 @@ fun GameScreen(
                 currentThrow = 1
             }
             3 -> {
+                // Undo dart 2 (2 darts kastet så langt)
                 if (throw2 != null) {
                     if (currentPlayer == 1) {
-                        player1 = player1.copy(score = player1.score + (throw2 ?: 0))
+                        player1 = player1.copy(
+                            score = player1.score + (throw2 ?: 0),
+                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
+                        )
                     } else {
-                        player2 = player2.copy(score = player2.score + (throw2 ?: 0))
+                        player2 = player2.copy(
+                            score = player2.score + (throw2 ?: 0),
+                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
+                        )
                     }
                 }
                 throw2 = null
@@ -545,6 +602,46 @@ fun GameScreen(
         }
         inputValue = ""
         multiplier = 1
+    }
+
+    // Exit Confirmation Dialog
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(
+                    "Exit Game?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    "The current game will not be saved. Are you sure you want to exit?",
+                    color = Color.White
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252)
+                    )
+                ) {
+                    Text("Exit")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitDialog = false }
+                ) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xDD000000)
+        )
     }
 
     // Bust Dialog
@@ -662,7 +759,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = player1.lastThrow,
+                                            highestScore = player1.highestScore,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -672,7 +769,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = player2.lastThrow,
+                                            highestScore = player2.highestScore,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -695,7 +792,7 @@ fun GameScreen(
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2C2B2B)
+                                containerColor = Color(0xFFFC1E69)
                             )
                         ) {
                             Text("Main Menu")
@@ -714,7 +811,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p1.playerId,
                                             average = player1.average,
-                                            highestScore = player1.lastThrow,
+                                            highestScore = player1.highestScore,
                                             dartsThrown = player1.dartsThrown,
                                             roundsPlayed = player1.roundsPlayed,
                                             finalScore = player1.score
@@ -724,7 +821,7 @@ fun GameScreen(
                                             gameId = 0,
                                             playerId = p2.playerId,
                                             average = player2.average,
-                                            highestScore = player2.lastThrow,
+                                            highestScore = player2.highestScore,
                                             dartsThrown = player2.dartsThrown,
                                             roundsPlayed = player2.roundsPlayed,
                                             finalScore = player2.score
@@ -739,26 +836,29 @@ fun GameScreen(
                                             player1Stats = player1Stats,
                                             player2Stats = player2Stats
                                         )
+
+                                        // Reset flyttet inn hit (etter saveGame)
+                                        firstPlayer = if (firstPlayer == 1) 2 else 1
+                                        currentPlayer = firstPlayer
+
+                                        player1 = Player(player1Name)
+                                        player2 = Player(player2Name)
+                                        player1RoundHistory = listOf()
+                                        player2RoundHistory = listOf()
+                                        overallRound = 1
+                                        throw1 = null
+                                        throw2 = null
+                                        throw3 = null
+                                        throw1WasDouble = false
+                                        throw2WasDouble = false
+                                        throw3WasDouble = false
+                                        currentThrow = 1
+                                        winner = null
+                                        showWinDialog = false
+                                        inputValue = ""
+                                        multiplier = 1
                                     }
                                 }
-
-                                firstPlayer = if (firstPlayer == 1) 2 else 1
-                                currentPlayer = firstPlayer
-
-                                player1 = Player(player1Name)
-                                player2 = Player(player2Name)
-                                overallRound = 1
-                                throw1 = null
-                                throw2 = null
-                                throw3 = null
-                                throw1WasDouble = false
-                                throw2WasDouble = false
-                                throw3WasDouble = false
-                                currentThrow = 1
-                                winner = null
-                                showWinDialog = false
-                                inputValue = ""
-                                multiplier = 1
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
@@ -775,7 +875,6 @@ fun GameScreen(
         )
     }
 
-    // =========================================================================================
     // Kristian forsøk på å støtte ulike skjermstørrelser.
     // =========================================================================================
 
@@ -790,167 +889,214 @@ fun GameScreen(
         val actionButtonHeight = (screenHeight * 0.08f).coerceAtMost(58.dp)
         val numberButtonHeight = (screenHeight * 0.1f).coerceAtMost(60.dp)
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF1E1E1E)) // MØRK GRÅ BAKGRUNN // Rød for å vise tydelig hva som er hva
-            .padding((screenWidth*0.02f).coerceAtLeast(8.dp)),
-        verticalArrangement = Arrangement.Top
-    ) {
-        // Back button
-        IconButton(
-            onClick = { navController.popBackStack() },
+        Column(
             modifier = Modifier
-                .align(Alignment.Start)
-                .size(48.dp)
-                .shadow(8.dp, CircleShape)
-                .background(Color(0xCC000000), CircleShape)
+                .fillMaxSize()
+                .background(Color(0xFF1E1E1E)) // MØRK GRÅ BAKGRUNN // Rød for å vise tydelig hva som er hva
+                .padding((screenWidth*0.02f).coerceAtLeast(8.dp)),
+            verticalArrangement = Arrangement.Top
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        // Player Cards - 25% av høyden
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.25f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PlayerCard(
-                player = player1,
-                isActive = currentPlayer == 1,
-                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+            // Back button
+            IconButton(
+                onClick = { navController.popBackStack() },
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                checkout = calculateCheckout(player1.score),
-                roundNumber = overallRound
-            )
-
-            PlayerCard(
-                player = player2,
-                isActive = currentPlayer == 2,
-                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                checkout = calculateCheckout(player2.score),
-                roundNumber = overallRound
-            )
-        }
-
-        // Throw buttons, 15 prosent av høyden
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.06f),
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            ThrowButton(
-                label = "THROW 1:",
-                value = throw1,
-                isActive = currentThrow == 1,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-                    .fillMaxHeight()
-            )
-            ThrowButton(
-                label = "THROW 2:",
-                value = throw2,
-                isActive = currentThrow == 2,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-                    .fillMaxHeight()
-            )
-            ThrowButton(
-                label = "THROW 3:",
-                value = throw3,
-                isActive = currentThrow == 3,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(4.dp)
-                    .fillMaxHeight()
-            )
-        }
-
-        // Score display - DIGITAL LED STIL
-        // 20 % av høyden
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.10f)
-                .padding(8.dp)
-                .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFFF5DF20))
-                .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
-                .drawWithContent {
-                    drawContent()
-                    drawRoundRect(
-                        color = Color(0xFF333333),
-                        cornerRadius = CornerRadius(15.dp.toPx()),
-                        style = Stroke(width = 2.dp.toPx())
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (inputValue.isNotEmpty()) {
-                    "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
-                } else {
-                    "..."
-                },
-                fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B), // LED
-
-            )
-        }
-
-        // Action buttons (Undo, Double, Triple) - SAMME STIL SOM NUM PAD
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.06f)
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
-                .padding(1.dp),
-            horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
-        ) {
-            val undoInteraction = remember { MutableInteractionSource() }
-            val isUndoPressed by undoInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { undoLastThrow() },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = undoInteraction
+                    .align(Alignment.Start)
+                    .size(48.dp)
+                    .shadow(8.dp, CircleShape)
+                    .background(Color(0xCC000000), CircleShape)
             ) {
-                Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
-                    //verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Player Cards - 25% av høyden
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.25f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PlayerCard(
+                    player = player1,
+                    isActive = currentPlayer == 1,
+                    backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    checkout = calculateCheckout(player1.score),
+                    roundNumber = overallRound
+                )
+
+                PlayerCard(
+                    player = player2,
+                    isActive = currentPlayer == 2,
+                    backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    checkout = calculateCheckout(player2.score),
+                    roundNumber = overallRound
+                )
+            }
+
+            // Throw buttons, 15 prosent av høyden
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.05f),  // ✅ RIKTIG - gir 5% av høyden
+                horizontalArrangement = Arrangement.spacedBy(8.dp)  // ⬅️ også endre spacing fra 5dp til 8dp
+            ) {
+                ThrowButton(
+                    label = "THROW 1:",
+                    value = throw1,
+                    isActive = currentThrow == 1,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+                ThrowButton(
+                    label = "THROW 2:",
+                    value = throw2,
+                    isActive = currentThrow == 2,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+                ThrowButton(
+                    label = "THROW 3:",
+                    value = throw3,
+                    isActive = currentThrow == 3,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+            }
+
+            // Score display - DIGITAL LED STIL
+            // 20 % av høyden
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.10f)
+                    .padding(8.dp)
+                    .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFFF5DF20))
+                    .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
+                    .drawWithContent {
+                        drawContent()
+                        drawRoundRect(
+                            color = Color(0xFF333333),
+                            cornerRadius = CornerRadius(15.dp.toPx()),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (inputValue.isNotEmpty()) {
+                        "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
+                    } else {
+                        "..."
+                    },
+                    fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B), // LED
+
+                )
+            }
+
+            // Action buttons (Undo, Double, Triple) - SAMME STIL SOM NUM PAD
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.06f)
+                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                    .padding(1.dp),
+                horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
+            ) {
+                val undoInteraction = remember { MutableInteractionSource() }
+                val isUndoPressed by undoInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { undoLastThrow() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = undoInteraction
+                ) {
+                    Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
+                        //verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "↺",
+                            fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.offset(y = (-2).dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "UNDO",
+                            fontSize = actionButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                val doubleInteraction = remember { MutableInteractionSource() }
+                val isDoublePressed by doubleInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { multiplier = if (multiplier == 2) 1 else 2 },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = doubleInteraction
                 ) {
                     Text(
-                        text = "↺",
-                        fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                        "Double",
+                        fontSize = actionButtonFontSize,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.offset(y = (-2).dp)
+                        color = Color.White
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
+                val tripleInteraction = remember { MutableInteractionSource() }
+                val isTriplePressed by tripleInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { multiplier = if (multiplier == 3) 1 else 3 },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = tripleInteraction
+                ) {
                     Text(
-                        text = "UNDO",
+                        "Triple",
                         fontSize = actionButtonFontSize,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -958,199 +1104,152 @@ fun GameScreen(
                 }
             }
 
-            val doubleInteraction = remember { MutableInteractionSource() }
-            val isDoublePressed by doubleInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { multiplier = if (multiplier == 2) 1 else 2 },
+            // Number pad
+            // Number pad
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = doubleInteraction
-            ) {
-                Text(
-                    "Double",
-                    fontSize = actionButtonFontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            val tripleInteraction = remember { MutableInteractionSource() }
-            val isTriplePressed by tripleInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { multiplier = if (multiplier == 3) 1 else 3 },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = tripleInteraction
-            ) {
-                Text(
-                    "Triple",
-                    fontSize = actionButtonFontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
-
-        // Number pad
-        // Number pad
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.30f)
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)),
+                    .fillMaxWidth()
+                    .weight(0.30f)
+                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)),
                 //.padding(1.dp),
-        verticalArrangement = Arrangement.Top
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(1.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
+                verticalArrangement = Arrangement.Top
             ) {
-                for (i in 1..3) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            //.aspectRatio(1f)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(1.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                for (i in 4..6) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            //.aspectRatio(1f)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(1.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                for (i in 7..9) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            //.aspectRatio(1f)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(1.dp),
-
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                val clearInteraction = remember { MutableInteractionSource() }
-                val isClearPressed by clearInteraction.collectIsPressedAsState()
-
-                Button(
-                    onClick = {
-                        inputValue = ""
-                        multiplier = 1
-                    },
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .weight(1f)
-                        .fillMaxSize(),
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    for (i in 1..3) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    for (i in 4..6) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    for (i in 7..9) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(1.dp),
+
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    val clearInteraction = remember { MutableInteractionSource() }
+                    val isClearPressed by clearInteraction.collectIsPressedAsState()
+
+                    Button(
+                        onClick = {
+                            inputValue = ""
+                            multiplier = 1
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
                         //.aspectRatio(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
-                    interactionSource = clearInteraction
-                ) {
-                    Text(
-                        "CLR",
-                        fontSize = numberButtonFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        interactionSource = clearInteraction
+                    ) {
+                        Text(
+                            "CLR",
+                            fontSize = numberButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
 
+                        )
+                    }
+
+                    NumberButton(
+                        number = 0,
+                        onClick = { inputValue += "0" },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
                     )
-                }
 
-                NumberButton(
-                    number = 0,
-                    onClick = { inputValue += "0" },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize()
-                )
+                    val confirmInteraction = remember { MutableInteractionSource() }
+                    val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
 
-                val confirmInteraction = remember { MutableInteractionSource() }
-                val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
-
-                Button(
-                    onClick = {
-                        if (isValidInput) {
-                            confirmThrow()
-                        }
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
-                        else if (isValidInput) Color(0xFF4CAF50)
-                        else Color(0xFFFF0000),
-                        disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
-                        else Color(0xFF4CAF50)
-                    ),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
-                    interactionSource = confirmInteraction
-                ) {
-                    Text(
-                        text = if (inputValue.isEmpty()) "✓" else if (isValidInput) "✓" else "✗",
-                        fontSize = numberButtonFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                    Button(
+                        onClick = {
+                            if (isValidInput) {
+                                confirmThrow()
+                            }
+                        },
                         modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
+                            else if (isValidInput) Color(0xFF4CAF50)
+                            else Color(0xFFFF0000),
+                            disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
+                            else Color(0xFF4CAF50)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        interactionSource = confirmInteraction
+                    ) {
+                        Text(
+                            text = if (inputValue.isEmpty()) "✓" else if (isValidInput) "✓" else "✗",
+                            fontSize = numberButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
                             //.wrapContentSize(Alignment.Center)
-                    )
+                        )
+                    }
                 }
             }
-        }
 
-    }
+        }
     }
 
 }
@@ -1167,7 +1266,6 @@ fun PlayerCard(
 ) {
     Card(
         modifier = modifier
-            .fillMaxHeight()
             .shadow(
                 elevation = if (isActive) 16.dp else 8.dp,
                 shape = RoundedCornerShape(8.dp),
@@ -1206,13 +1304,13 @@ fun PlayerCard(
                                     )
                                 )
                             } else {
-                                Brush.verticalGradient(listOf(backgroundColor, backgroundColor))
+                                SolidColor(backgroundColor)
                             }
                         )
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .padding((cardHeight.value * 0.055f).dp),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -1246,7 +1344,7 @@ fun PlayerCard(
 
                         Text(
                             text = "${player.score}",
-                            fontSize = (fontSize.value * 1.5f).sp,
+                            fontSize = fontSize,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
                             textAlign = TextAlign.Center,
@@ -1258,7 +1356,7 @@ fun PlayerCard(
                         ) {
                             Text(
                                 text = "LAST: ${player.lastThrow}",
-                                fontSize = (fontSize.value * 0.35f).sp,
+                                fontSize = (fontSize.value * 0.22f).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
@@ -1267,7 +1365,7 @@ fun PlayerCard(
 
                             Text(
                                 text = checkout,
-                                fontSize = (fontSize.value * 0.35f).sp,
+                                fontSize = (fontSize.value * 0.22f).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
@@ -1280,21 +1378,21 @@ fun PlayerCard(
                             ) {
                                 Text(
                                     text = "AVG\n${String.format("%.1f", player.average)}",
-                                    fontSize = (fontSize.value * 0.35f).sp,
+                                    fontSize = (fontSize.value * 0.28f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     text = "ROUND\n$roundNumber",
-                                    fontSize = (fontSize.value * 0.35f).sp,
+                                    fontSize = (fontSize.value * 0.28f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     text = "DARTS\n${player.dartsThrown}",
-                                    fontSize = (fontSize.value * 0.35f).sp,
+                                    fontSize = (fontSize.value * 0.28f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
@@ -1309,7 +1407,6 @@ fun PlayerCard(
 }
 
 
-
 @Composable
 fun ThrowButton(
     label: String,
@@ -1317,28 +1414,33 @@ fun ThrowButton(
     isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    BoxWithConstraints(modifier = modifier) {
+        val buttonHeight = maxHeight
+        val cornerRadius = buttonHeight * 0.5f
 
-    val cornerRadius = 50.dp
-    val fontSize = 32.sp
+        with(LocalDensity.current) {
+            val fontSize = (buttonHeight * 0.24f).toSp().coerceAtMost(13.sp)
 
-    Button(
-        onClick = { },
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF6B6B6B)
-        ),
-        shape = RoundedCornerShape(cornerRadius),
-        border = if (isActive) {
-            BorderStroke(1.5.dp, Color(0xEBF148E8))
-        } else null,
-        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
-    ) {
-        Text(
-            text = "$label ${value ?: ""}",
-            fontSize = (fontSize.value * 0.35f).sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+            Button(
+                onClick = { },
+                modifier = Modifier.fillMaxSize(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6B6B6B)
+                ),
+                shape = RoundedCornerShape(cornerRadius),
+                border = if (isActive) {
+                    BorderStroke(1.5.dp, Color(0xEBF148E8))
+                } else null,
+                contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "$label ${value ?: ""}",
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 
