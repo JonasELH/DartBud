@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
@@ -848,7 +849,7 @@ fun GameScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.08f),
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             ThrowButton(
                 label = "THROW 1:",
@@ -856,6 +857,7 @@ fun GameScreen(
                 isActive = currentThrow == 1,
                 modifier = Modifier
                     .weight(1f)
+                    .padding(4.dp)
                     .fillMaxHeight()
             )
             ThrowButton(
@@ -864,6 +866,7 @@ fun GameScreen(
                 isActive = currentThrow == 2,
                 modifier = Modifier
                     .weight(1f)
+                    .padding(4.dp)
                     .fillMaxHeight()
             )
             ThrowButton(
@@ -872,6 +875,7 @@ fun GameScreen(
                 isActive = currentThrow == 3,
                 modifier = Modifier
                     .weight(1f)
+                    .padding(4.dp)
                     .fillMaxHeight()
             )
         }
@@ -913,7 +917,7 @@ fun GameScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.08f)
+                .weight(0.06f)
                 .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
                 .padding(1.dp),
             horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
@@ -1007,12 +1011,15 @@ fun GameScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.30f)
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
-                .padding(1.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)),
+                //.padding(1.dp),
+        verticalArrangement = Arrangement.Top
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 1..3) {
@@ -1021,13 +1028,17 @@ fun GameScreen(
                         onClick = { inputValue += i.toString() },
                         modifier = Modifier
                             .weight(1f)
+                            .fillMaxSize()
                             //.aspectRatio(1f)
                     )
                 }
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 4..6) {
@@ -1036,13 +1047,17 @@ fun GameScreen(
                         onClick = { inputValue += i.toString() },
                         modifier = Modifier
                             .weight(1f)
+                            .fillMaxSize()
                             //.aspectRatio(1f)
                     )
                 }
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 7..9) {
@@ -1051,13 +1066,18 @@ fun GameScreen(
                         onClick = { inputValue += i.toString() },
                         modifier = Modifier
                             .weight(1f)
+                            .fillMaxSize()
                             //.aspectRatio(1f)
                     )
                 }
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(1.dp),
+
                 horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 val clearInteraction = remember { MutableInteractionSource() }
@@ -1069,7 +1089,8 @@ fun GameScreen(
                         multiplier = 1
                     },
                     modifier = Modifier
-                        .weight(1f),
+                        .weight(1f)
+                        .fillMaxSize(),
                         //.aspectRatio(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
                     shape = RoundedCornerShape(6.dp),
@@ -1082,7 +1103,7 @@ fun GameScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         modifier = Modifier
-                            .wrapContentSize(Alignment.Center)
+
                     )
                 }
 
@@ -1091,6 +1112,7 @@ fun GameScreen(
                     onClick = { inputValue += "0" },
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxSize()
                 )
 
                 val confirmInteraction = remember { MutableInteractionSource() }
@@ -1103,7 +1125,8 @@ fun GameScreen(
                         }
                     },
                     modifier = Modifier
-                        .weight(1f),
+                        .weight(1f)
+                        .fillMaxSize(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
                         else if (isValidInput) Color(0xFF4CAF50)
