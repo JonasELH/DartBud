@@ -98,6 +98,9 @@ fun GameScreen(
     var bustMessage by remember { mutableStateOf("") }
     var showWinDialog by remember { mutableStateOf(false) }
     var winner by remember { mutableStateOf<Player?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) }
+    var player2RoundHistory by remember { mutableStateOf(listOf<Int>()) }
 
     val currentInputScore = if (inputValue.isNotEmpty()) {
         (inputValue.toIntOrNull() ?: 0) * multiplier
@@ -281,7 +284,10 @@ fun GameScreen(
 
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
-                    player1 = player1.copy(score = newScore)
+                    player1 = player1.copy(
+                        score = newScore,
+                        dartsThrown = player1.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player1 = player1.copy(hasScored = true)
@@ -306,7 +312,10 @@ fun GameScreen(
                     }
                 } else {
                     val newScore = player2.score - throwValue
-                    player2 = player2.copy(score = newScore)
+                    player2 = player2.copy(
+                        score = newScore,
+                        dartsThrown = player2.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player2 = player2.copy(hasScored = true)
@@ -339,7 +348,10 @@ fun GameScreen(
 
                 if (currentPlayer == 1) {
                     val newScore = player1.score - throwValue
-                    player1 = player1.copy(score = newScore)
+                    player1 = player1.copy(
+                        score = newScore,
+                        dartsThrown = player1.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player1 = player1.copy(hasScored = true)
@@ -367,7 +379,10 @@ fun GameScreen(
                     }
                 } else {
                     val newScore = player2.score - throwValue
-                    player2 = player2.copy(score = newScore)
+                    player2 = player2.copy(
+                        score = newScore,
+                        dartsThrown = player2.dartsThrown + 1
+                    )
 
                     if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
                         player2 = player2.copy(hasScored = true)
@@ -418,7 +433,7 @@ fun GameScreen(
                         showBustDialog = true
                         player1 = player1.copy(score = player1.score + total)
                     } else {
-                        val newDartsThrown = player1.dartsThrown + 3
+                        val newDartsThrown = player1.dartsThrown + 1
 
                         player1 = player1.copy(
                             lastThrow = total,
@@ -427,6 +442,7 @@ fun GameScreen(
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
+                        player1RoundHistory = player1RoundHistory + total
 
                         if (newScore == 0) {
                             winner = player1
@@ -448,7 +464,7 @@ fun GameScreen(
                         showBustDialog = true
                         player2 = player2.copy(score = player2.score + total)
                     } else {
-                        val newDartsThrown = player2.dartsThrown + 3
+                        val newDartsThrown = player2.dartsThrown + 1
 
                         player2 = player2.copy(
                             lastThrow = total,
@@ -457,6 +473,8 @@ fun GameScreen(
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
+                        // Legg til i historikk
+                        player2RoundHistory = player2RoundHistory + total
 
                         if (newScore == 0) {
                             winner = player2
@@ -484,25 +502,50 @@ fun GameScreen(
     fun undoLastThrow() {
         when (currentThrow) {
             1 -> {
+                // Undo hele forrige runde (alle 3 darts)
                 if (throw1 == null && throw2 == null && throw3 == null) {
                     currentPlayer = if (currentPlayer == 1) 2 else 1
 
-                    if (currentPlayer == 1 && player1.lastThrow > 0) {
-                        val newScore = player1.score + player1.lastThrow
+                    if (currentPlayer == 1 && player1RoundHistory.isNotEmpty()) {
+                        // Hent siste runde fra historikk
+                        val lastRound = player1RoundHistory.last()
+                        player1RoundHistory = player1RoundHistory.dropLast(1)
+
+                        val newScore = player1.score + lastRound
                         val newDartsThrown = maxOf(0, player1.dartsThrown - 3)
+
+                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
+                        val newLastThrow = if (player1RoundHistory.isNotEmpty()) {
+                            player1RoundHistory.last()
+                        } else {
+                            0
+                        }
+
                         player1 = player1.copy(
                             score = newScore,
-                            lastThrow = 0,
+                            lastThrow = newLastThrow,
                             roundsPlayed = maxOf(0, player1.roundsPlayed - 1),
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
                         )
-                    } else if (currentPlayer == 2 && player2.lastThrow > 0) {
-                        val newScore = player2.score + player2.lastThrow
+                    } else if (currentPlayer == 2 && player2RoundHistory.isNotEmpty()) {
+                        // Hent siste runde fra historikk
+                        val lastRound = player2RoundHistory.last()
+                        player2RoundHistory = player2RoundHistory.dropLast(1)
+
+                        val newScore = player2.score + lastRound
                         val newDartsThrown = maxOf(0, player2.dartsThrown - 3)
+
+                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
+                        val newLastThrow = if (player2RoundHistory.isNotEmpty()) {
+                            player2RoundHistory.last()
+                        } else {
+                            0
+                        }
+
                         player2 = player2.copy(
                             score = newScore,
-                            lastThrow = 0,
+                            lastThrow = newLastThrow,
                             roundsPlayed = maxOf(0, player2.roundsPlayed - 1),
                             dartsThrown = newDartsThrown,
                             average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
@@ -513,11 +556,18 @@ fun GameScreen(
                 }
             }
             2 -> {
+                // Undo dart 1 (bare 1 dart kastet så langt)
                 if (throw1 != null) {
                     if (currentPlayer == 1) {
-                        player1 = player1.copy(score = player1.score + (throw1 ?: 0))
+                        player1 = player1.copy(
+                            score = player1.score + (throw1 ?: 0),
+                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
+                        )
                     } else {
-                        player2 = player2.copy(score = player2.score + (throw1 ?: 0))
+                        player2 = player2.copy(
+                            score = player2.score + (throw1 ?: 0),
+                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
+                        )
                     }
                 }
                 throw1 = null
@@ -525,11 +575,18 @@ fun GameScreen(
                 currentThrow = 1
             }
             3 -> {
+                // Undo dart 2 (2 darts kastet så langt)
                 if (throw2 != null) {
                     if (currentPlayer == 1) {
-                        player1 = player1.copy(score = player1.score + (throw2 ?: 0))
+                        player1 = player1.copy(
+                            score = player1.score + (throw2 ?: 0),
+                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
+                        )
                     } else {
-                        player2 = player2.copy(score = player2.score + (throw2 ?: 0))
+                        player2 = player2.copy(
+                            score = player2.score + (throw2 ?: 0),
+                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
+                        )
                     }
                 }
                 throw2 = null
@@ -539,6 +596,46 @@ fun GameScreen(
         }
         inputValue = ""
         multiplier = 1
+    }
+
+    // Exit Confirmation Dialog
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Text(
+                    "Exit Game?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    "The current game will not be saved. Are you sure you want to exit?",
+                    color = Color.White
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF5252)
+                    )
+                ) {
+                    Text("Exit")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitDialog = false }
+                ) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xDD000000)
+        )
     }
 
     // Bust Dialog
@@ -733,26 +830,29 @@ fun GameScreen(
                                             player1Stats = player1Stats,
                                             player2Stats = player2Stats
                                         )
+
+                                        // Reset flyttet inn hit (etter saveGame)
+                                        firstPlayer = if (firstPlayer == 1) 2 else 1
+                                        currentPlayer = firstPlayer
+
+                                        player1 = Player(player1Name)
+                                        player2 = Player(player2Name)
+                                        player1RoundHistory = listOf()
+                                        player2RoundHistory = listOf()
+                                        overallRound = 1
+                                        throw1 = null
+                                        throw2 = null
+                                        throw3 = null
+                                        throw1WasDouble = false
+                                        throw2WasDouble = false
+                                        throw3WasDouble = false
+                                        currentThrow = 1
+                                        winner = null
+                                        showWinDialog = false
+                                        inputValue = ""
+                                        multiplier = 1
                                     }
                                 }
-
-                                firstPlayer = if (firstPlayer == 1) 2 else 1
-                                currentPlayer = firstPlayer
-
-                                player1 = Player(player1Name)
-                                player2 = Player(player2Name)
-                                overallRound = 1
-                                throw1 = null
-                                throw2 = null
-                                throw3 = null
-                                throw1WasDouble = false
-                                throw2WasDouble = false
-                                throw3WasDouble = false
-                                currentThrow = 1
-                                winner = null
-                                showWinDialog = false
-                                inputValue = ""
-                                multiplier = 1
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
@@ -772,13 +872,13 @@ fun GameScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF2A2A2A)) // MØRK GRÅ BAKGRUNN
+            .background(Color(0xFF2A2A2A))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Back button
         IconButton(
-            onClick = { navController.popBackStack() },
+            onClick = { showExitDialog = true },
             modifier = Modifier
                 .align(Alignment.Start)
                 .size(48.dp)
@@ -800,7 +900,7 @@ fun GameScreen(
             PlayerCard(
                 player = player1,
                 isActive = currentPlayer == 1,
-                backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                backgroundColor = Color(0xFF505050),
                 modifier = Modifier.weight(1f),
                 checkout = calculateCheckout(player1.score),
                 roundNumber = overallRound,
@@ -851,7 +951,7 @@ fun GameScreen(
             )
         }
 
-        // Score display - DIGITAL LED STIL
+        // Score display
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -878,18 +978,17 @@ fun GameScreen(
                 fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B), // LED
-
+                color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B)
             )
         }
 
-        // Action buttons (Undo, Double, Triple) - SAMME STIL SOM NUM PAD
+        // Action buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
                 .padding(1.dp),
-            horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
+            horizontalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             val undoInteraction = remember { MutableInteractionSource() }
             val isUndoPressed by undoInteraction.collectIsPressedAsState()
@@ -906,13 +1005,13 @@ fun GameScreen(
                 border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
                 interactionSource = undoInteraction
             ) {
-                Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
+                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = "↺",
-                        fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                        fontSize = (actionButtonFontSize.value * 1.8f).sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         modifier = Modifier.offset(y = (-2).dp)
@@ -978,13 +1077,13 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // BAKGRUNN
-                .padding(1.dp), // Padding gir linjer mellom knappene
-            verticalArrangement = Arrangement.spacedBy(1.dp) // LINJE mellom rader
+                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
+                .padding(1.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp) // LINJE mellom knapper
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 for (i in 1..3) {
                     NumberButton(
@@ -1043,7 +1142,7 @@ fun GameScreen(
                         .weight(1f)
                         .height(numberButtonHeight),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF505050) // MØRK GRÅ
+                        containerColor = Color(0xFF505050)
                     ),
                     shape = RoundedCornerShape(6.dp),
                     border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
@@ -1118,16 +1217,16 @@ fun PlayerCard(
         modifier = modifier
             .height(height)
             .shadow(
-                elevation = if (isActive) 16.dp else 8.dp, // MER GLOW når aktiv
+                elevation = if (isActive) 16.dp else 8.dp,
                 shape = RoundedCornerShape((height.value * 0.09f).dp),
-                spotColor = if (isActive) Color(0xEBF148E8) else Color.Black // ⬅️ Rosa glow
+                spotColor = if (isActive) Color(0xEBF148E8) else Color.Black
             )
             .then(
                 if (isActive) {
                     Modifier.drawWithContent {
                         drawContent()
                         drawRoundRect(
-                            color = Color(0xEBF148E8), // OUTLINE
+                            color = Color(0xEBF148E8),
                             cornerRadius = CornerRadius((height.value * 0.09f).dp.toPx()),
                             style = Stroke(width = 3.dp.toPx())
                         )
@@ -1136,7 +1235,7 @@ fun PlayerCard(
             ),
         shape = RoundedCornerShape((height.value * 0.09f).dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent // ⬅️ TRANSPARENT for gradient
+            containerColor = Color.Transparent
         )
     ) {
         Box(
@@ -1144,7 +1243,6 @@ fun PlayerCard(
                 .fillMaxSize()
                 .background(
                     brush = if (isActive) {
-                        // GRADIENT når aktiv
                         androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFF505050),
@@ -1153,7 +1251,6 @@ fun PlayerCard(
                             )
                         )
                     } else {
-                        //
                         androidx.compose.ui.graphics.SolidColor(backgroundColor)
                     }
                 )
@@ -1177,7 +1274,7 @@ fun PlayerCard(
                                 text = "→",
                                 fontSize = (fontSize.value * 0.25f).sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White, // Farge på pil-indikator
+                                color = Color.White,
                                 modifier = Modifier
                                     .padding(end = 4.dp)
                                     .offset(y = (-2).dp)
@@ -1196,7 +1293,7 @@ fun PlayerCard(
                     text = "${player.score}",
                     fontSize = fontSize,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (isActive) Color.White else Color.White, // Endre farge når det er aktiv spiller sin tur??
+                    color = Color.White,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1311,7 +1408,7 @@ fun NumberButton(
             text = number.toString(),
             fontSize = (fontSize.value * 1.3f).sp,
             fontWeight = FontWeight.Black,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, // ⬅️ MONOSPACE
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             color = Color.White
         )
     }
