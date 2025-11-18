@@ -947,8 +947,8 @@ fun GameScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.08f),
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    .weight(0.05f),  // ✅ RIKTIG - gir 5% av høyden
+                horizontalArrangement = Arrangement.spacedBy(8.dp)  // ⬅️ også endre spacing fra 5dp til 8dp
             ) {
                 ThrowButton(
                     label = "THROW 1:",
@@ -1414,26 +1414,33 @@ fun ThrowButton(
     isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = 8.dp
+    BoxWithConstraints(modifier = modifier) {
+        val buttonHeight = maxHeight
+        val cornerRadius = buttonHeight * 0.5f
 
-    Button(
-        onClick = { },
-        modifier = modifier,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF6B6B6B)
-        ),
-        shape = RoundedCornerShape(cornerRadius),
-        border = if (isActive) {
-            BorderStroke(1.5.dp, Color(0xEBF148E8))
-        } else null,
-        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
-    ) {
-        Text(
-            text = "$label ${value ?: ""}",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        with(LocalDensity.current) {
+            val fontSize = (buttonHeight * 0.24f).toSp().coerceAtMost(13.sp)
+
+            Button(
+                onClick = { },
+                modifier = Modifier.fillMaxSize(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6B6B6B)
+                ),
+                shape = RoundedCornerShape(cornerRadius),
+                border = if (isActive) {
+                    BorderStroke(1.5.dp, Color(0xEBF148E8))
+                } else null,
+                contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
+            ) {
+                Text(
+                    text = "$label ${value ?: ""}",
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 
