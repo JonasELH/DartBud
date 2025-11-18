@@ -776,7 +776,7 @@ fun GameScreen(
     }
 
     // =========================================================================================
-    // Kristian forsøk på å støtte ulike skjermstørrelser
+    // Kristian forsøk på å støtte ulike skjermstørrelser.
     // =========================================================================================
 
     BoxWithConstraints {
