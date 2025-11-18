@@ -848,7 +848,7 @@ fun GameScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.08f),
+                .weight(0.06f),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             ThrowButton(
@@ -1167,6 +1167,7 @@ fun PlayerCard(
 ) {
     Card(
         modifier = modifier
+            .fillMaxHeight()
             .shadow(
                 elevation = if (isActive) 16.dp else 8.dp,
                 shape = RoundedCornerShape(8.dp),
@@ -1205,13 +1206,13 @@ fun PlayerCard(
                                     )
                                 )
                             } else {
-                                SolidColor(backgroundColor)
+                                Brush.verticalGradient(listOf(backgroundColor, backgroundColor))
                             }
                         )
                 ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .padding((cardHeight.value * 0.055f).dp),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -1245,7 +1246,7 @@ fun PlayerCard(
 
                         Text(
                             text = "${player.score}",
-                            fontSize = fontSize,
+                            fontSize = (fontSize.value * 1.5f).sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
                             textAlign = TextAlign.Center,
@@ -1257,7 +1258,7 @@ fun PlayerCard(
                         ) {
                             Text(
                                 text = "LAST: ${player.lastThrow}",
-                                fontSize = (fontSize.value * 0.22f).sp,
+                                fontSize = (fontSize.value * 0.35f).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
@@ -1266,7 +1267,7 @@ fun PlayerCard(
 
                             Text(
                                 text = checkout,
-                                fontSize = (fontSize.value * 0.22f).sp,
+                                fontSize = (fontSize.value * 0.35f).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
@@ -1279,21 +1280,21 @@ fun PlayerCard(
                             ) {
                                 Text(
                                     text = "AVG\n${String.format("%.1f", player.average)}",
-                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontSize = (fontSize.value * 0.35f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     text = "ROUND\n$roundNumber",
-                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontSize = (fontSize.value * 0.35f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     text = "DARTS\n${player.dartsThrown}",
-                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontSize = (fontSize.value * 0.35f).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center
@@ -1308,6 +1309,7 @@ fun PlayerCard(
 }
 
 
+
 @Composable
 fun ThrowButton(
     label: String,
@@ -1315,7 +1317,9 @@ fun ThrowButton(
     isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = 8.dp
+
+    val cornerRadius = 50.dp
+    val fontSize = 32.sp
 
     Button(
         onClick = { },
@@ -1331,7 +1335,7 @@ fun ThrowButton(
     ) {
         Text(
             text = "$label ${value ?: ""}",
-            fontSize = 16.sp,
+            fontSize = (fontSize.value * 0.35f).sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
