@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.ui.platform.LocalDensity
 
 data class Player(
     val name: String,
@@ -47,7 +49,11 @@ data class Player(
     var dartsThrown: Int = 0,
     var hasScored: Boolean = false
 )
+// Forberedelse til skjermstørrelse-tilpassing
 
+fun TextUnit.coerceAtMost(maximumValue: TextUnit): TextUnit {
+    return if (this.value > maximumValue.value) maximumValue else this
+}
 @Composable
 fun GameScreen(
     navController: NavController,
@@ -869,156 +875,228 @@ fun GameScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF2A2A2A))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Back button
-        IconButton(
-            onClick = { showExitDialog = true },
+    // Kristian forsøk på å støtte ulike skjermstørrelser.
+    // =========================================================================================
+
+    BoxWithConstraints {
+        val screenWidth = maxWidth
+        val screenHeight = maxHeight
+
+        // Beregn størrelser dynamisk basert på skjermstørrelsen
+        val playerCardHeight = (screenHeight * 0.28f).coerceAtMost(180.dp)
+        val throwButtonHeight = (screenHeight * 0.08f).coerceAtMost(70.dp)
+        val scoreDisplayHeight = (screenHeight * 0.09f).coerceAtMost(90.dp)
+        val actionButtonHeight = (screenHeight * 0.08f).coerceAtMost(58.dp)
+        val numberButtonHeight = (screenHeight * 0.1f).coerceAtMost(60.dp)
+
+        Column(
             modifier = Modifier
-                .align(Alignment.Start)
-                .size(48.dp)
-                .shadow(8.dp, CircleShape)
-                .background(Color(0xCC000000), CircleShape)
+                .fillMaxSize()
+                .background(Color(0xFF1E1E1E)) // MØRK GRÅ BAKGRUNN // Rød for å vise tydelig hva som er hva
+                .padding((screenWidth*0.02f).coerceAtLeast(8.dp)),
+            verticalArrangement = Arrangement.Top
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PlayerCard(
-                player = player1,
-                isActive = currentPlayer == 1,
-                backgroundColor = Color(0xFF505050),
-                modifier = Modifier.weight(1f),
-                checkout = calculateCheckout(player1.score),
-                roundNumber = overallRound,
-                height = playerCardHeight,
-                fontSize = playerCardFontSize
-            )
-
-            PlayerCard(
-                player = player2,
-                isActive = currentPlayer == 2,
-                backgroundColor = Color(0xFF505050),
-                modifier = Modifier.weight(1f),
-                checkout = calculateCheckout(player2.score),
-                roundNumber = overallRound,
-                height = playerCardHeight,
-                fontSize = playerCardFontSize
-            )
-        }
-
-        // Throw buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ThrowButton(
-                label = "THROW 1:",
-                value = throw1,
-                isActive = currentThrow == 1,
-                modifier = Modifier.weight(1f),
-                height = throwButtonHeight,
-                fontSize = throwButtonFontSize
-            )
-            ThrowButton(
-                label = "THROW 2:",
-                value = throw2,
-                isActive = currentThrow == 2,
-                modifier = Modifier.weight(1f),
-                height = throwButtonHeight,
-                fontSize = throwButtonFontSize
-            )
-            ThrowButton(
-                label = "THROW 3:",
-                value = throw3,
-                isActive = currentThrow == 3,
-                modifier = Modifier.weight(1f),
-                height = throwButtonHeight,
-                fontSize = throwButtonFontSize
-            )
-        }
-
-        // Score display
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(scoreDisplayHeight)
-                .padding(horizontal = 32.dp)
-                .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFFF5DF20))
-                .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
-                .drawWithContent {
-                    drawContent()
-                    drawRoundRect(
-                        color = Color(0xFF333333),
-                        cornerRadius = CornerRadius(15.dp.toPx()),
-                        style = Stroke(width = 2.dp.toPx())
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (inputValue.isNotEmpty()) {
-                    "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
-                } else {
-                    "..."
-                },
-                fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B)
-            )
-        }
-
-        // Action buttons
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
-                .padding(1.dp),
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            val undoInteraction = remember { MutableInteractionSource() }
-            val isUndoPressed by undoInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { undoLastThrow() },
+            // Back button
+            IconButton(
+                onClick = { navController.popBackStack() },
                 modifier = Modifier
-                    .weight(1f)
-                    .height(actionButtonHeight),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = undoInteraction
+                    .align(Alignment.Start)
+                    .size(48.dp)
+                    .shadow(8.dp, CircleShape)
+                    .background(Color(0xCC000000), CircleShape)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Player Cards - 25% av høyden
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.25f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PlayerCard(
+                    player = player1,
+                    isActive = currentPlayer == 1,
+                    backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    checkout = calculateCheckout(player1.score),
+                    roundNumber = overallRound
+                )
+
+                PlayerCard(
+                    player = player2,
+                    isActive = currentPlayer == 2,
+                    backgroundColor = Color(0xFF505050), // ⬅️ ALLTID MØRK GRÅ
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    checkout = calculateCheckout(player2.score),
+                    roundNumber = overallRound
+                )
+            }
+
+            // Throw buttons, 15 prosent av høyden
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.08f),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                ThrowButton(
+                    label = "THROW 1:",
+                    value = throw1,
+                    isActive = currentThrow == 1,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+                ThrowButton(
+                    label = "THROW 2:",
+                    value = throw2,
+                    isActive = currentThrow == 2,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+                ThrowButton(
+                    label = "THROW 3:",
+                    value = throw3,
+                    isActive = currentThrow == 3,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .fillMaxHeight()
+                )
+            }
+
+            // Score display - DIGITAL LED STIL
+            // 20 % av høyden
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.10f)
+                    .padding(8.dp)
+                    .shadow(12.dp, RoundedCornerShape(15.dp), spotColor = Color(0xFFF5DF20))
+                    .background(Color(0xFF0A0A0A), RoundedCornerShape(15.dp))
+                    .drawWithContent {
+                        drawContent()
+                        drawRoundRect(
+                            color = Color(0xFF333333),
+                            cornerRadius = CornerRadius(15.dp.toPx()),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (inputValue.isNotEmpty()) {
+                        "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
+                    } else {
+                        "..."
+                    },
+                    fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B), // LED
+
+                )
+            }
+
+            // Action buttons (Undo, Double, Triple) - SAMME STIL SOM NUM PAD
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.06f)
+                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)) // GUL BAKGRUNN
+                    .padding(1.dp),
+                horizontalArrangement = Arrangement.spacedBy(1.dp) // TYNN GUL LINJE
+            ) {
+                val undoInteraction = remember { MutableInteractionSource() }
+                val isUndoPressed by undoInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { undoLastThrow() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (isUndoPressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = undoInteraction
+                ) {
+                    Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
+                        //verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "↺",
+                            fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.offset(y = (-2).dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "UNDO",
+                            fontSize = actionButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                val doubleInteraction = remember { MutableInteractionSource() }
+                val isDoublePressed by doubleInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { multiplier = if (multiplier == 2) 1 else 2 },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = doubleInteraction
                 ) {
                     Text(
-                        text = "↺",
-                        fontSize = (actionButtonFontSize.value * 1.8f).sp,
+                        "Double",
+                        fontSize = actionButtonFontSize,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.offset(y = (-2).dp)
+                        color = Color.White
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                }
+
+                val tripleInteraction = remember { MutableInteractionSource() }
+                val isTriplePressed by tripleInteraction.collectIsPressedAsState()
+
+                Button(
+                    onClick = { multiplier = if (multiplier == 3) 1 else 3 },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF505050)
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
+                    interactionSource = tripleInteraction
+                ) {
                     Text(
-                        text = "UNDO",
+                        "Triple",
                         fontSize = actionButtonFontSize,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -1026,179 +1104,154 @@ fun GameScreen(
                 }
             }
 
-            val doubleInteraction = remember { MutableInteractionSource() }
-            val isDoublePressed by doubleInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { multiplier = if (multiplier == 2) 1 else 2 },
+            // Number pad
+            // Number pad
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(actionButtonHeight),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = doubleInteraction
+                    .fillMaxWidth()
+                    .weight(0.30f)
+                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)),
+                //.padding(1.dp),
+                verticalArrangement = Arrangement.Top
             ) {
-                Text(
-                    "Double",
-                    fontSize = actionButtonFontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            val tripleInteraction = remember { MutableInteractionSource() }
-            val isTriplePressed by tripleInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { multiplier = if (multiplier == 3) 1 else 3 },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(actionButtonHeight),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF505050)
-                ),
-                shape = RoundedCornerShape(6.dp),
-                border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(0xEBF148E8)) else null,
-                interactionSource = tripleInteraction
-            ) {
-                Text(
-                    "Triple",
-                    fontSize = actionButtonFontSize,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
-
-        // Number pad
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
-                .padding(1.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                for (i in 1..3) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f),
-                        height = numberButtonHeight,
-                        fontSize = numberButtonFontSize
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                for (i in 4..6) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f),
-                        height = numberButtonHeight,
-                        fontSize = numberButtonFontSize
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                for (i in 7..9) {
-                    NumberButton(
-                        number = i,
-                        onClick = { inputValue += i.toString() },
-                        modifier = Modifier.weight(1f),
-                        height = numberButtonHeight,
-                        fontSize = numberButtonFontSize
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                val clearInteraction = remember { MutableInteractionSource() }
-                val isClearPressed by clearInteraction.collectIsPressedAsState()
-
-                Button(
-                    onClick = {
-                        inputValue = ""
-                        multiplier = 1
-                    },
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .weight(1f)
-                        .height(numberButtonHeight),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF505050)
-                    ),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
-                    interactionSource = clearInteraction
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    Text(
-                        "CLR",
-                        fontSize = numberButtonFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    for (i in 1..3) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
                 }
 
-                NumberButton(
-                    number = 0,
-                    onClick = { inputValue += "0" },
-                    modifier = Modifier.weight(1f),
-                    height = numberButtonHeight,
-                    fontSize = numberButtonFontSize
-                )
-
-                val confirmInteraction = remember { MutableInteractionSource() }
-                val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
-
-                Button(
-                    onClick = {
-                        if (isValidInput) {
-                            confirmThrow()
-                        }
-                    },
+                Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .weight(1f)
-                        .height(numberButtonHeight),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
-                        else if (isValidInput) Color(0xFF4CAF50)
-                        else Color(0xFFFF0000),
-                        disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
-                        else Color(0xFF4CAF50)
-                    ),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
-                    interactionSource = confirmInteraction
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    Text(
-                        text = if (inputValue.isEmpty()) "✓"
-                        else if (isValidInput) "✓"
-                        else "✗",
-                        fontSize = (numberButtonFontSize.value * 1.14f).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                    for (i in 4..6) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(1.dp),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    for (i in 7..9) {
+                        NumberButton(
+                            number = i,
+                            onClick = { inputValue += i.toString() },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                            //.aspectRatio(1f)
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(1.dp),
+
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    val clearInteraction = remember { MutableInteractionSource() }
+                    val isClearPressed by clearInteraction.collectIsPressedAsState()
+
+                    Button(
+                        onClick = {
+                            inputValue = ""
+                            multiplier = 1
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        //.aspectRatio(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        interactionSource = clearInteraction
+                    ) {
+                        Text(
+                            "CLR",
+                            fontSize = numberButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+
+                        )
+                    }
+
+                    NumberButton(
+                        number = 0,
+                        onClick = { inputValue += "0" },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
                     )
+
+                    val confirmInteraction = remember { MutableInteractionSource() }
+                    val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
+
+                    Button(
+                        onClick = {
+                            if (isValidInput) {
+                                confirmThrow()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
+                            else if (isValidInput) Color(0xFF4CAF50)
+                            else Color(0xFFFF0000),
+                            disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
+                            else Color(0xFF4CAF50)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        interactionSource = confirmInteraction
+                    ) {
+                        Text(
+                            text = if (inputValue.isEmpty()) "✓" else if (isValidInput) "✓" else "✗",
+                            fontSize = numberButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier
+                            //.wrapContentSize(Alignment.Center)
+                        )
+                    }
                 }
             }
+
         }
     }
+
 }
 
 @Composable
@@ -1209,17 +1262,14 @@ fun PlayerCard(
     checkout: String,
     roundNumber: Int,
     currentRoundTotal: Int = 0,
-    height: Dp,
-    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
-            .height(height)
             .shadow(
                 elevation = if (isActive) 16.dp else 8.dp,
-                shape = RoundedCornerShape((height.value * 0.09f).dp),
-                spotColor = if (isActive) Color(0xEBF148E8) else Color.Black
+                shape = RoundedCornerShape(8.dp),
+                spotColor = Color(0xEBF148E8)
             )
             .then(
                 if (isActive) {
@@ -1227,123 +1277,128 @@ fun PlayerCard(
                         drawContent()
                         drawRoundRect(
                             color = Color(0xEBF148E8),
-                            cornerRadius = CornerRadius((height.value * 0.09f).dp.toPx()),
+                            cornerRadius = CornerRadius(8.dp.toPx()),
                             style = Stroke(width = 3.dp.toPx())
                         )
                     }
                 } else Modifier
             ),
-        shape = RoundedCornerShape((height.value * 0.09f).dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        )
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = if (isActive) {
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF505050),
-                                Color(0xFF3A3A3A),
-                                Color(0xFF505050)
-                            )
-                        )
-                    } else {
-                        androidx.compose.ui.graphics.SolidColor(backgroundColor)
-                    }
-                )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding((height.value * 0.055f).dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
+        BoxWithConstraints {
+            val cardHeight = maxHeight
+            with(LocalDensity.current) {
+                val fontSize = (cardHeight * 0.3f).toSp().coerceAtMost(32.sp)
+
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = if (isActive) {
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFF505050),
+                                        Color(0xFF3A3A3A),
+                                        Color(0xFF505050)
+                                    )
+                                )
+                            } else {
+                                SolidColor(backgroundColor)
+                            }
+                        )
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding((cardHeight.value * 0.055f).dp),
+                        verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (isActive) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (isActive) {
+                                    Text(
+                                        text = "→",
+                                        fontSize = (fontSize.value * 0.25f).sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .padding(end = 4.dp)
+                                            .offset(y = (-2).dp)
+                                    )
+                                }
+                                Text(
+                                    text = player.name,
+                                    fontSize = (fontSize.value * 0.35f).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "${player.score}",
+                            fontSize = fontSize,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             Text(
-                                text = "→",
-                                fontSize = (fontSize.value * 0.25f).sp,
+                                text = "LAST: ${player.lastThrow}",
+                                fontSize = (fontSize.value * 0.22f).sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                modifier = Modifier
-                                    .padding(end = 4.dp)
-                                    .offset(y = (-2).dp)
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             )
+
+                            Text(
+                                text = checkout,
+                                fontSize = (fontSize.value * 0.22f).sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "AVG\n${String.format("%.1f", player.average)}",
+                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = "ROUND\n$roundNumber",
+                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text(
+                                    text = "DARTS\n${player.dartsThrown}",
+                                    fontSize = (fontSize.value * 0.28f).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                        Text(
-                            text = player.name,
-                            fontSize = (fontSize.value * 0.35f).sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-
-                Text(
-                    text = "${player.score}",
-                    fontSize = fontSize,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "LAST: ${player.lastThrow}",
-                        fontSize = (fontSize.value * 0.22f).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(
-                        text = checkout,
-                        fontSize = (fontSize.value * 0.22f).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "AVG\n${String.format("%.1f", player.average)}",
-                            fontSize = (fontSize.value * 0.28f).sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "ROUND\n$roundNumber",
-                            fontSize = (fontSize.value * 0.28f).sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "DARTS\n${player.dartsThrown}",
-                            fontSize = (fontSize.value * 0.28f).sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
@@ -1351,20 +1406,19 @@ fun PlayerCard(
     }
 }
 
+
 @Composable
 fun ThrowButton(
     label: String,
     value: Int?,
     isActive: Boolean = false,
-    height: Dp,
-    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = height * 0.5f
+    val cornerRadius = 8.dp
 
     Button(
         onClick = { },
-        modifier = modifier.height(height),
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF6B6B6B)
         ),
@@ -1376,7 +1430,7 @@ fun ThrowButton(
     ) {
         Text(
             text = "$label ${value ?: ""}",
-            fontSize = fontSize,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
@@ -1387,8 +1441,6 @@ fun ThrowButton(
 fun NumberButton(
     number: Int,
     onClick: () -> Unit,
-    height: Dp,
-    fontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -1396,7 +1448,7 @@ fun NumberButton(
 
     Button(
         onClick = onClick,
-        modifier = modifier.height(height),
+        modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF505050)
         ),
@@ -1406,9 +1458,9 @@ fun NumberButton(
     ) {
         Text(
             text = number.toString(),
-            fontSize = (fontSize.value * 1.3f).sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Black,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, // ⬅️ MONOSPACE
             color = Color.White
         )
     }

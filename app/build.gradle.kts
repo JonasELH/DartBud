@@ -58,6 +58,7 @@ dependencies {
     // For animation:
     implementation("androidx.compose.animation:animation:1.5.4")
     implementation("androidx.compose.animation:animation-core:1.5.4")
+    implementation(libs.androidx.ui.graphics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
