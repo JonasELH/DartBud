@@ -49,6 +49,12 @@ data class Player(
     var dartsThrown: Int = 0,
     var hasScored: Boolean = false
 )
+data class DartThrow(
+    val playerId: Int,        // 1 eller 2
+    val value: Int,           // Poeng (0-60)
+    val wasDouble: Boolean,   // Om det var double
+    val throwNumber: Int      // Hvilket kast (1, 2, eller 3)
+)
 // Forberedelse til skjermstørrelse-tilpassing
 
 fun TextUnit.coerceAtMost(maximumValue: TextUnit): TextUnit {
@@ -107,6 +113,7 @@ fun GameScreen(
     var showExitDialog by remember { mutableStateOf(false) }
     var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) }
     var player2RoundHistory by remember { mutableStateOf(listOf<Int>()) }
+    var dartHistory by remember { mutableStateOf(listOf<DartThrow>()) }
 
     val currentInputScore = if (inputValue.isNotEmpty()) {
         (inputValue.toIntOrNull() ?: 0) * multiplier
@@ -347,6 +354,13 @@ fun GameScreen(
                 }
 
                 currentThrow = 2
+                // Legg til i dart history
+                dartHistory = dartHistory + DartThrow(
+                    playerId = currentPlayer,
+                    value = throwValue,
+                    wasDouble = isDouble,
+                    throwNumber = 1
+                )
             }
             2 -> {
                 throw2 = throwValue
@@ -417,6 +431,13 @@ fun GameScreen(
                 }
 
                 currentThrow = 3
+                // Legg til i dart history
+                dartHistory = dartHistory + DartThrow(
+                    playerId = currentPlayer,
+                    value = throwValue,
+                    wasDouble = isDouble,
+                    throwNumber = 2
+                )
             }
             3 -> {
                 throw3 = throwValue
@@ -488,6 +509,13 @@ fun GameScreen(
                         }
                     }
                 }
+                // Legg til i dart history
+                dartHistory = dartHistory + DartThrow(
+                    playerId = currentPlayer,
+                    value = throwValue,
+                    wasDouble = isDouble,
+                    throwNumber = 3
+                )
 
                 currentPlayer = if (currentPlayer == 1) 2 else 1
                 overallRound += 1
@@ -506,100 +534,122 @@ fun GameScreen(
     }
 
     fun undoLastThrow() {
-        when (currentThrow) {
+        // Sjekk om det finnes noe å angre
+        if (dartHistory.isEmpty()) return
+
+        // Hent siste dart
+        val lastDart = dartHistory.last()
+
+        // Fjern fra history
+        dartHistory = dartHistory.dropLast(1)
+
+        // Finn hvilken spiller det var
+        val targetPlayer = if (lastDart.playerId == 1) player1 else player2
+
+        // Reverser dart-kastet
+        val newScore = targetPlayer.score + lastDart.value
+        val newDartsThrown = maxOf(0, targetPlayer.dartsThrown - 1)
+
+        // Oppdater spiller
+        if (lastDart.playerId == 1) {
+            player1 = player1.copy(
+                score = newScore,
+                dartsThrown = newDartsThrown,
+                average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
+            )
+        } else {
+            player2 = player2.copy(
+                score = newScore,
+                dartsThrown = newDartsThrown,
+                average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
+            )
+        }
+
+        // Håndter UI state (throw1, throw2, throw3, currentThrow)
+        when (lastDart.throwNumber) {
             1 -> {
-                // Undo hele forrige runde (alle 3 darts)
-                if (throw1 == null && throw2 == null && throw3 == null) {
-                    currentPlayer = if (currentPlayer == 1) 2 else 1
-
-                    if (currentPlayer == 1 && player1RoundHistory.isNotEmpty()) {
-                        // Hent siste runde fra historikk
-                        val lastRound = player1RoundHistory.last()
-                        player1RoundHistory = player1RoundHistory.dropLast(1)
-
-                        val newScore = player1.score + lastRound
-                        val newDartsThrown = maxOf(0, player1.dartsThrown - 3)
-
-                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
-                        val newLastThrow = if (player1RoundHistory.isNotEmpty()) {
-                            player1RoundHistory.last()
-                        } else {
-                            0
-                        }
-
-                        player1 = player1.copy(
-                            score = newScore,
-                            lastThrow = newLastThrow,
-                            roundsPlayed = maxOf(0, player1.roundsPlayed - 1),
-                            dartsThrown = newDartsThrown,
-                            average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
-                        )
-                    } else if (currentPlayer == 2 && player2RoundHistory.isNotEmpty()) {
-                        // Hent siste runde fra historikk
-                        val lastRound = player2RoundHistory.last()
-                        player2RoundHistory = player2RoundHistory.dropLast(1)
-
-                        val newScore = player2.score + lastRound
-                        val newDartsThrown = maxOf(0, player2.dartsThrown - 3)
-
-                        // Oppdater lastThrow til forrige runde (eller 0 hvis ingen igjen)
-                        val newLastThrow = if (player2RoundHistory.isNotEmpty()) {
-                            player2RoundHistory.last()
-                        } else {
-                            0
-                        }
-
-                        player2 = player2.copy(
-                            score = newScore,
-                            lastThrow = newLastThrow,
-                            roundsPlayed = maxOf(0, player2.roundsPlayed - 1),
-                            dartsThrown = newDartsThrown,
-                            average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
-                        )
-                    }
-
-                    overallRound = maxOf(1, overallRound - 1)
-                }
-            }
-            2 -> {
-                // Undo dart 1 (bare 1 dart kastet så langt)
-                if (throw1 != null) {
-                    if (currentPlayer == 1) {
-                        player1 = player1.copy(
-                            score = player1.score + (throw1 ?: 0),
-                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
-                        )
-                    } else {
-                        player2 = player2.copy(
-                            score = player2.score + (throw1 ?: 0),
-                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
-                        )
-                    }
-                }
                 throw1 = null
                 throw1WasDouble = false
+
+                // Hvis vi er på en annen spiller, bytt tilbake
+                if (currentPlayer != lastDart.playerId) {
+                    currentPlayer = lastDart.playerId
+                    overallRound = maxOf(1, overallRound - 1)
+                }
                 currentThrow = 1
             }
-            3 -> {
-                // Undo dart 2 (2 darts kastet så langt)
-                if (throw2 != null) {
-                    if (currentPlayer == 1) {
-                        player1 = player1.copy(
-                            score = player1.score + (throw2 ?: 0),
-                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
-                        )
-                    } else {
-                        player2 = player2.copy(
-                            score = player2.score + (throw2 ?: 0),
-                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
-                        )
-                    }
-                }
+            2 -> {
                 throw2 = null
                 throw2WasDouble = false
+
+                // Gjenopprett throw1 hvis den finnes i history
+                val previousThrow1 = dartHistory.lastOrNull {
+                    it.playerId == lastDart.playerId && it.throwNumber == 1
+                }
+                if (previousThrow1 != null) {
+                    throw1 = previousThrow1.value
+                    throw1WasDouble = previousThrow1.wasDouble
+                }
+
+                if (currentPlayer != lastDart.playerId) {
+                    currentPlayer = lastDart.playerId
+                }
                 currentThrow = 2
             }
+            3 -> {
+                throw3 = null
+                throw3WasDouble = false
+
+                // Gjenopprett throw1 og throw2 hvis de finnes
+                val previousThrows = dartHistory.filter { it.playerId == lastDart.playerId }
+                val previousThrow1 = previousThrows.lastOrNull { it.throwNumber == 1 }
+                val previousThrow2 = previousThrows.lastOrNull { it.throwNumber == 2 }
+
+                if (previousThrow1 != null) {
+                    throw1 = previousThrow1.value
+                    throw1WasDouble = previousThrow1.wasDouble
+                }
+                if (previousThrow2 != null) {
+                    throw2 = previousThrow2.value
+                    throw2WasDouble = previousThrow2.wasDouble
+                }
+
+                if (currentPlayer != lastDart.playerId) {
+                    currentPlayer = lastDart.playerId
+                }
+                currentThrow = 3
+            }
         }
+
+        // Oppdater lastThrow og roundsPlayed hvis nødvendig
+        if (lastDart.throwNumber == 3) {
+            // Vi angret siste dart i en fullført runde
+            val previousRoundTotal = dartHistory
+                .filter { it.playerId == lastDart.playerId }
+                .takeLast(3)
+                .sumOf { it.value }
+
+            if (lastDart.playerId == 1) {
+                player1 = player1.copy(
+                    lastThrow = if (previousRoundTotal > 0) previousRoundTotal else 0,
+                    roundsPlayed = maxOf(0, player1.roundsPlayed - 1)
+                )
+                // Oppdater round history
+                if (player1RoundHistory.isNotEmpty()) {
+                    player1RoundHistory = player1RoundHistory.dropLast(1)
+                }
+            } else {
+                player2 = player2.copy(
+                    lastThrow = if (previousRoundTotal > 0) previousRoundTotal else 0,
+                    roundsPlayed = maxOf(0, player2.roundsPlayed - 1)
+                )
+                // Oppdater round history
+                if (player2RoundHistory.isNotEmpty()) {
+                    player2RoundHistory = player2RoundHistory.dropLast(1)
+                }
+            }
+        }
+
         inputValue = ""
         multiplier = 1
     }
@@ -845,6 +895,7 @@ fun GameScreen(
                                         player2 = Player(player2Name)
                                         player1RoundHistory = listOf()
                                         player2RoundHistory = listOf()
+                                        dartHistory = listOf()
                                         overallRound = 1
                                         throw1 = null
                                         throw2 = null
