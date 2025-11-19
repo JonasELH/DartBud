@@ -1093,20 +1093,25 @@ fun GameScreen(
                         horizontalArrangement = Arrangement.Start,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Spacer(modifier = Modifier.width(8.dp))  //
+                        //Spacer(modifier = Modifier.width(8.dp))  //
                         Text(
                             text = "↺",
                             fontSize = (actionButtonFontSize.value * 1.8f).sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            softWrap = false,
+                            maxLines = 1,
+                            modifier=Modifier.offset(y=(-4).dp)
 
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Undo",
                             fontSize = actionButtonFontSize,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            softWrap = false,
+                            maxLines = 1
                         )
                     }
                 }
@@ -1171,13 +1176,20 @@ fun GameScreen(
 
             // Hjelpefunksjon for avrunding på knapper
 
-            fun getCornerShape(position: Int, totalInRow: Int): RoundedCornerShape {
+            fun getCornerShape(position: Int, totalInRow: Int, includeBottom: Boolean = false): RoundedCornerShape {
                 return when (position) {
-                    0 -> RoundedCornerShape(topStart = 6.dp)  // Left
-                    totalInRow - 1 -> RoundedCornerShape(topEnd = 6.dp) // Right
-                    else -> RoundedCornerShape(0.dp) // middle
+                    0 -> RoundedCornerShape(
+                        topStart = 6.dp,
+                        bottomStart = if (includeBottom) 6.dp else 0.dp
+                    )
+                    totalInRow - 1 -> RoundedCornerShape(
+                        topEnd = 6.dp,
+                        bottomEnd = if (includeBottom) 6.dp else 0.dp
+                    )
+                    else -> RoundedCornerShape(0.dp)
                 }
             }
+
 
 
             Column(
@@ -1202,7 +1214,7 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-1,3)
+                            shape = getCornerShape(i-1,3, includeBottom=true)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1222,7 +1234,7 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-1,3)
+                            shape = getCornerShape(i-4,3,includeBottom=true)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1242,7 +1254,7 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-1,3)
+                            shape = getCornerShape(i-7,3,includeBottom=true)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1270,7 +1282,7 @@ fun GameScreen(
                             .fillMaxSize(),
                         //.aspectRatio(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
-                        shape = RoundedCornerShape(bottomStart = 6.dp),
+                        shape = RoundedCornerShape(bottomStart = 6.dp, topStart = 6.dp, bottomEnd = 6.dp),
                         border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
                         interactionSource = clearInteraction
                     ) {
@@ -1290,7 +1302,7 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize(),
-                        shape = RoundedCornerShape(0.dp)
+                        shape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp)
                     )
 
                     val confirmInteraction = remember { MutableInteractionSource() }
@@ -1312,7 +1324,7 @@ fun GameScreen(
                             disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
                             else Color(0xFF4CAF50)
                         ),
-                        shape = RoundedCornerShape(bottomEnd = 6.dp),
+                        shape = RoundedCornerShape(bottomEnd = 6.dp, bottomStart = 6.dp, topEnd = 6.dp),
                         border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
                         interactionSource = confirmInteraction
                     ) {
