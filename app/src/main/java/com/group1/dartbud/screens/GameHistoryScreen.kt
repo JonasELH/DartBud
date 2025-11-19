@@ -59,7 +59,7 @@ fun GameHistoryScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+                .background(Color(0xFF737171))
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
