@@ -1204,7 +1204,7 @@ fun GameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(1.dp),
+                        .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     for (i in 1..3) {
@@ -1224,7 +1224,7 @@ fun GameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(1.dp),
+                        .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     for (i in 4..6) {
@@ -1244,7 +1244,7 @@ fun GameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(1.dp),
+                        .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     for (i in 7..9) {
