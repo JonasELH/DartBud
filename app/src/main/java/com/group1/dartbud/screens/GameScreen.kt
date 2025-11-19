@@ -1196,8 +1196,8 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.30f)
-                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp)),
-                //.padding(1.dp),
+                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
+                    .padding(1.dp),
                 verticalArrangement = Arrangement.Top
             ) {
                 Row(
