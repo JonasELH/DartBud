@@ -1,5 +1,6 @@
 package com.group1.dartbud.screens
 
+import android.R.attr.shape
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.BorderStroke
@@ -1163,8 +1164,22 @@ fun GameScreen(
                 }
             }
 
+            // =====================================================================================
             // Number pad
             // Number pad
+            // =====================================================================================
+
+            // Hjelpefunksjon for avrunding på knapper
+
+            fun getCornerShape(position: Int, totalInRow: Int): RoundedCornerShape {
+                return when (position) {
+                    0 -> RoundedCornerShape(topStart = 6.dp)  // Left
+                    totalInRow - 1 -> RoundedCornerShape(topEnd = 6.dp) // Right
+                    else -> RoundedCornerShape(0.dp) // middle
+                }
+            }
+
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1186,7 +1201,8 @@ fun GameScreen(
                             onClick = { inputValue += i.toString() },
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxSize()
+                                .fillMaxSize(),
+                            shape = getCornerShape(i-1,3)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1205,7 +1221,8 @@ fun GameScreen(
                             onClick = { inputValue += i.toString() },
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxSize()
+                                .fillMaxSize(),
+                            shape = getCornerShape(i-1,3)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1224,7 +1241,8 @@ fun GameScreen(
                             onClick = { inputValue += i.toString() },
                             modifier = Modifier
                                 .weight(1f)
-                                .fillMaxSize()
+                                .fillMaxSize(),
+                            shape = getCornerShape(i-1,3)
                             //.aspectRatio(1f)
                         )
                     }
@@ -1235,6 +1253,7 @@ fun GameScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .padding(1.dp),
+
 
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
@@ -1251,7 +1270,7 @@ fun GameScreen(
                             .fillMaxSize(),
                         //.aspectRatio(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF505050)),
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(bottomStart = 6.dp),
                         border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
                         interactionSource = clearInteraction
                     ) {
@@ -1270,7 +1289,8 @@ fun GameScreen(
                         onClick = { inputValue += "0" },
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxSize()
+                            .fillMaxSize(),
+                        shape = RoundedCornerShape(0.dp)
                     )
 
                     val confirmInteraction = remember { MutableInteractionSource() }
@@ -1292,7 +1312,7 @@ fun GameScreen(
                             disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
                             else Color(0xFF4CAF50)
                         ),
-                        shape = RoundedCornerShape(6.dp),
+                        shape = RoundedCornerShape(bottomEnd = 6.dp),
                         border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
                         interactionSource = confirmInteraction
                     ) {
@@ -1508,7 +1528,8 @@ fun ThrowButton(
 fun NumberButton(
     number: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier,
+    shape: RoundedCornerShape = RoundedCornerShape(6.dp)
 ) {
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
@@ -1516,10 +1537,10 @@ fun NumberButton(
     Button(
         onClick = onClick,
         modifier = modifier,
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF505050)
         ),
-        shape = RoundedCornerShape(6.dp),
         border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
         interactionSource = interaction
     ) {
