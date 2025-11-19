@@ -1036,20 +1036,22 @@ fun GameScreen(
                     border = if (isUndoPressed) BorderStroke(3.dp, Color(0xFFB2073F)) else null,
                     interactionSource = undoInteraction
                 ) {
-                    Row( // ⬅️ BRUKER ROW FOR Å DELE OPP
-                        //verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start,  // ⬅️ FLYTT TIL VENSTRE!
+                        modifier = Modifier.fillMaxWidth()  // ⬅️ LEGG TIL DENNE!
                     ) {
+                        Spacer(modifier = Modifier.width(8.dp))  // ⬅️ Litt padding fra kant
                         Text(
                             text = "↺",
-                            fontSize = (actionButtonFontSize.value * 1.8f).sp, // ⬅️ 50% STØRRE SYMBOL
+                            fontSize = (actionButtonFontSize.value * 1.8f).sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.offset(y = (-2).dp)
+                            color = Color.White
+
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "UNDO",
+                            text = "Undo",
                             fontSize = actionButtonFontSize,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
