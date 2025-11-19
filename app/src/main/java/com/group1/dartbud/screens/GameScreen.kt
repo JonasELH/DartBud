@@ -898,7 +898,7 @@ fun GameScreen(
         ) {
             // Back button
             IconButton(
-                onClick = { navController.popBackStack() },
+                onClick = { showExitDialog = true },
                 modifier = Modifier
                     .align(Alignment.Start)
                     .size(48.dp)
