@@ -18,13 +18,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,14 +101,21 @@ fun ManagePlayersScreen(
             Spacer(modifier = Modifier.height(20.dp))
             Text(
                 "Manage Players",
-                fontSize = 32.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
                 fontWeight = FontWeight.ExtraBold,
+                fontSize = 32.sp,
                 color = Color.White,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(4.dp),
-                textAlign = TextAlign.Center
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(2f, 2f),
+                        blurRadius = 4f,
+                    )
+                )
             )
+
+
+
 
             // Create button
             val createInteraction = remember { MutableInteractionSource() }
