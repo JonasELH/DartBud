@@ -158,7 +158,7 @@ fun LoginScreen(
                 Text(
                     "Log in with Google",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold, color = Color.White
                 )
             }
 
