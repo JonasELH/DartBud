@@ -1422,7 +1422,7 @@ fun PlayerCard(
                                         color = Color.White,
                                         modifier = Modifier
                                             .padding(end = 4.dp)
-                                            .offset(y = (-2).dp)
+                                            //.offset(y = (-0).dp)
                                     )
                                 }
                                 Text(
