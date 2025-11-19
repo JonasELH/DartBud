@@ -87,4 +87,8 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+
+    // For "logg-ut-knapp", i stedet for ExitToApp som strengt tatt er en Logg inn-knapp...
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
 }

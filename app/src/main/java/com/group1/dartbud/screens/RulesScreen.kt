@@ -34,16 +34,15 @@ fun RulesScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding))
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(top = innerPadding.calculateTopPadding(), start = 16.dp, end = 16.dp)                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "DartBud Rules",
+                text = "501 Rules",
                 style = MaterialTheme.typography.headlineMedium
             )
 
