@@ -586,7 +586,7 @@ fun GameScreen(
                     if (currentPlayer == 1) {
                         player1 = player1.copy(
                             score = player1.score + (throw2 ?: 0),
-                            dartsThrown = maxOf(0, player1.dartsThrown - 1)
+                            dartsThrown = maxOf(0, player2.dartsThrown - 1)
                         )
                     } else {
                         player2 = player2.copy(
