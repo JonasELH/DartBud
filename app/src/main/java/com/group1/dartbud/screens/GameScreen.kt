@@ -1038,10 +1038,10 @@ fun GameScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,  // ⬅️ FLYTT TIL VENSTRE!
-                        modifier = Modifier.fillMaxWidth()  // ⬅️ LEGG TIL DENNE!
+                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Spacer(modifier = Modifier.width(8.dp))  // ⬅️ Litt padding fra kant
+                        Spacer(modifier = Modifier.width(8.dp))  //
                         Text(
                             text = "↺",
                             fontSize = (actionButtonFontSize.value * 1.8f).sp,
