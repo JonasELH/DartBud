@@ -149,10 +149,10 @@ fun GameSettingsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                            Icon(Icons.Default.Person, null, Modifier.size(20.dp), tint = Color.White)
                             Text(
                                 "CHOOSE PLAYER 1",
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Bold, color = Color.White,
                                 fontSize = 10.sp
                             )
                         }
@@ -168,7 +168,7 @@ fun GameSettingsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color.Black
+                                color = Color.White
                             )
                             userProfiles.forEach { profile ->
                                 DropdownMenuItem(
@@ -196,7 +196,7 @@ fun GameSettingsScreen(
                             Text(
                                 "🎯 Local Players",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Bold, color = Color.White,
                                 fontSize = 14.sp
                             )
                             localProfiles.forEach { profile ->
@@ -246,10 +246,10 @@ fun GameSettingsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.Person, null, Modifier.size(20.dp))
+                            Icon(Icons.Default.Person, null, Modifier.size(20.dp), tint = Color.White)
                             Text(
                                 "CHOOSE PLAYER 2",
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Bold, color = Color.White,
                                 fontSize = 10.sp
                             )
                         }
@@ -265,7 +265,7 @@ fun GameSettingsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color.Black
+                                color = Color.White
                             )
                             userProfiles.forEach { profile ->
                                 DropdownMenuItem(
@@ -419,7 +419,7 @@ fun GameSettingsScreen(
                 Text(
                     "MANAGE PLAYERS",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 18.sp, color = Color.White
                 )
             }
 

@@ -1,6 +1,9 @@
 package com.group1.dartbud.screens
 
-import androidx.compose.runtime.remember
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.GameViewModel
 import androidx.compose.foundation.BorderStroke
@@ -14,9 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -54,6 +54,7 @@ fun MainMenuScreen(
             contentScale = ContentScale.Crop
         )
 
+
         // Logout-knapp
         IconButton(
             onClick = {
@@ -90,8 +91,7 @@ fun MainMenuScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Play Game knapp
-            val playGameInteraction =
-                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val playGameInteraction = remember { MutableInteractionSource() }
             val isPlayGamePressed by playGameInteraction.collectIsPressedAsState()
 
             Button(
@@ -105,16 +105,16 @@ fun MainMenuScreen(
                 ),
                 shape = RoundedCornerShape(28.dp),
                 border = if (isPlayGamePressed) {
-                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                    BorderStroke(3.dp, Color(0xFFFFD700))
                 } else null,
                 interactionSource = playGameInteraction
             ) {
-                Text("Play Game", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Play Game", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+
             }
 
             // Game History knapp
-            val gameHistoryInteraction =
-                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val gameHistoryInteraction = remember { MutableInteractionSource() }
             val isGameHistoryPressed by gameHistoryInteraction.collectIsPressedAsState()
 
             Button(
@@ -128,16 +128,16 @@ fun MainMenuScreen(
                 ),
                 shape = RoundedCornerShape(28.dp),
                 border = if (isGameHistoryPressed) {
-                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                    BorderStroke(3.dp, Color(0xFFFFD700))
                 } else null,
                 interactionSource = gameHistoryInteraction
             ) {
-                Text("Game History", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Game History", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+
             }
 
             // Rules knapp
-            val rulesInteraction =
-                remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val rulesInteraction = remember { MutableInteractionSource() }
             val isRulesPressed by rulesInteraction.collectIsPressedAsState()
 
             Button(
@@ -151,11 +151,12 @@ fun MainMenuScreen(
                 ),
                 shape = RoundedCornerShape(28.dp),
                 border = if (isRulesPressed) {
-                    androidx.compose.foundation.BorderStroke(3.dp, Color(0xFFFFD700))
+                    BorderStroke(3.dp, Color(0xFFFFD700))
                 } else null,
                 interactionSource = rulesInteraction
             ) {
-                Text("Rules", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Rules", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+
             }
         }
     }
