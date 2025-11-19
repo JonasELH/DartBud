@@ -1264,7 +1264,7 @@ fun GameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .padding(1.dp),
+                        .padding(0.5.dp),
 
 
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
