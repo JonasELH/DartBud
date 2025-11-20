@@ -30,6 +30,7 @@ import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.AuthState
 import com.group1.dartbud.viewmodel.AuthViewModel
 import com.group1.dartbud.viewmodel.PlayerViewModel
+import com.group1.dartbud.utils.NetworkUtils  // ⬅️ NY IMPORT
 import kotlinx.coroutines.launch
 
 @Composable
@@ -43,6 +44,9 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
     val currentUser by authViewModel.currentUser.collectAsState()
     val authState by authViewModel.authState.collectAsState()
+
+    // ⬇️ NY STATE FOR NETWORK ERROR ⬇️
+    var showNetworkError by remember { mutableStateOf(false) }
 
     // Google Sign-In launcher
     val launcher = rememberLauncherForActivityResult(
@@ -84,12 +88,76 @@ fun LoginScreen(
         }
     }
 
+    // ⬇️ NY NETWORK ERROR DIALOG ⬇️
+    if (showNetworkError) {
+        AlertDialog(
+            onDismissRequest = { showNetworkError = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "📡",
+                        fontSize = 28.sp
+                    )
+                    Text(
+                        "No Internet Connection",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Google Sign-In requires an internet connection.",
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = Color.White.copy(alpha = 0.3f)
+                    )
+
+                    Text(
+                        "Please:",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        "• Connect to WiFi\n• Enable mobile data\n• Or continue as guest to play offline",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showNetworkError = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFC1E69)
+                    )
+                ) {
+                    Text("OK", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = Color(0xDD000000),
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
         // Bakgrunnsbilde (samme som main menu eller annet bilde)
         Image(
-            painter = painterResource(id = R.drawable.mainmenuu), // Bytt til ditt ønskede bilde
+            painter = painterResource(id = R.drawable.mainmenuu),
             contentDescription = "Login Background",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -138,8 +206,17 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    val signInIntent = authViewModel.getGoogleSignInClient(context).signInIntent
-                    launcher.launch(signInIntent)
+                    // ⬇️ SJEKK NETWORK FØRST! ⬇️
+                    if (!NetworkUtils.isNetworkAvailable(context)) {
+                        // Vis error dialog
+                        showNetworkError = true
+                        android.util.Log.w("LoginScreen", "Google Sign-In blocked: No internet connection")
+                    } else {
+                        // Fortsett med sign-in
+                        val signInIntent = authViewModel.getGoogleSignInClient(context).signInIntent
+                        launcher.launch(signInIntent)
+                        android.util.Log.i("LoginScreen", "Google Sign-In started: Internet available")
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.75f)
@@ -158,7 +235,8 @@ fun LoginScreen(
                 Text(
                     "Log in with Google",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold, color = Color.White
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
 
@@ -168,6 +246,7 @@ fun LoginScreen(
 
             OutlinedButton(
                 onClick = {
+                    // Guest mode krever IKKE internett! ✅
                     navController.navigate("main_menu") {
                         popUpTo("login") { inclusive = true }
                     }
@@ -192,7 +271,6 @@ fun LoginScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-
         }
     }
 }
