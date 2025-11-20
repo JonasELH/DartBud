@@ -19,7 +19,9 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 - Round 5: $$266 - (3 \times 20) - (3 \times 18) - (2 \times 16) = 120$$
 - Round 7: $$120 - (1 \times 20) - (3 \times 15) - (1 \times 10) = 45$$
 - Round 9: $$45 = (1 \times 5) - (2 \times 20) - (2 \times 0) = 0$$
-...in their head or interrupt the flow with a calculator. 
+...in their head or interrupt the flow with a calculator.
+
+![3D render of a dartboard with one arrow in the bull's eye](Dart1-transparent.png)
 
 ## Tools used
 - OneDrive for planning, featuring Gantt-charts, use cases and such
