@@ -1,6 +1,5 @@
 package com.group1.dartbud.screens
 
-import androidx.compose.ui.unit.offset
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
