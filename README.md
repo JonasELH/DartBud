@@ -33,6 +33,20 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 - Android Studio as IDE
 - Kotlin as language
 
+## Screenshots
+
+![](MainMenu_Cut.png)
+
+![](LogIn_DarkMode_Cut.png)
+
+![](GameSetup_LightMode_Cut.png)
+
+![](GameRules_LightMode_Cut.png)
+
+![](GameRules_DarkMode_Cut.png)
+
+![](Calculator_DarkMode_Cut.png)
+
 
 
 
