@@ -23,6 +23,15 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 
 ![3D render of a dartboard with one arrow in the bull's eye](Dart1-transparent.png)
 
+## Contributors
+
+| Navn | Rolle |
+|------|-------|
+| Kenneth Andreas Hansen | Software Architect |
+| Jonas El Helling | Project Manager |
+| Kristian Martin Tvenning | UX/UI |
+| Lucas Leon Svaet Holter | Database |
+
 ## Tools used
 - OneDrive for planning, featuring Gantt-charts, use cases and such
 - Microsoft Word for writing these files
