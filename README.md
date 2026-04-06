@@ -7,6 +7,8 @@
   height="400"
 />
 
+Screenshots further down.
+
 ## What is this?
 This is a university course project in the course `MOB3000`, a course for application development for mobile devices. The aim is to develop an Android app. We had the choice to choose between Java and Kotlin as languages and we've chosen Kotlin as the programming language. It's easier to read, more concise, reduces boilerplate code, reduced likeliness of null pointer exceptions and so on. Our app idea is a dart calculator for 501 Dart. It calculates the math such as $((3 \times 15) - (2 \times 19) - (3 \times 11))$ automatically, so that you can focus on throwing darts instead of keeping books. This keeps the flow in the game and the fun for the night.  
 
@@ -39,6 +41,20 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 - GitHub for repository management
 - Android Studio as IDE
 - Kotlin as language
+
+## Screenshots
+
+![](MainMenu_Cut.png)
+
+![](LogIn_DarkMode_Cut.png)
+
+![](GameSetup_LightMode_Cut.png)
+
+![](GameRules_LightMode_Cut.png)
+
+![](GameRules_DarkMode_Cut.png)
+
+![](Calculator_DarkMode_Cut.png)
 
 
 
