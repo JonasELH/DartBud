@@ -34,6 +34,15 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 | Kristian Martin Tvenning | UX/UI |
 | Lucas Leon Svaet Holter | Database |
 
+## Contributors
+
+| Navn | Rolle |
+|------|-------|
+| Kenneth Andreas Hansen | Software Architect |
+| Jonas El Helling | Project Manager |
+| Kristian Martin Tvenning | UX/UI |
+| Lucas Leon Svaet Holter | Database |
+
 ## Tools used
 - OneDrive for planning, featuring Gantt-charts, use cases and such
 - Microsoft Word for writing these files
