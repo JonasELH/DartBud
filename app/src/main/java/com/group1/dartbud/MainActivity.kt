@@ -2,7 +2,6 @@ package com.group1.dartbud
 
 import androidx.compose.runtime.LaunchedEffect
 import com.group1.dartbud.screens.ManagePlayersScreen
-import com.group1.dartbud.screens.CreatePlayerScreen
 import com.group1.dartbud.screens.GameHistoryScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -132,24 +131,6 @@ fun DartBudApp() {
                     gameViewModel = gameViewModel,
                     playerViewModel = playerViewModel
                 )
-            }
-
-            composable(
-                "createPlayer",
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { 1000 },
-                        animationSpec = tween(200)
-                    ) + fadeIn(animationSpec = tween(200))
-                },
-                exitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { 1000 },
-                        animationSpec = tween(200)
-                    ) + fadeOut(animationSpec = tween(200))
-                }
-            ) {
-                CreatePlayerScreen(navController = navController)
             }
 
             composable(

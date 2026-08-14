@@ -11,6 +11,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.group1.dartbud.data.FirestoreRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.tasks.await
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestoreRepository = FirestoreRepository()
 
     private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
@@ -73,6 +75,30 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         _currentUser.value = null
         _authState.value = AuthState.Idle
     }
+
+    private val _deleteAccountState = MutableStateFlow<DeleteAccountState>(DeleteAccountState.Idle)
+    val deleteAccountState: StateFlow<DeleteAccountState> = _deleteAccountState.asStateFlow()
+
+    fun deleteAccount(context: Context) {
+        val user = auth.currentUser ?: return
+        viewModelScope.launch {
+            _deleteAccountState.value = DeleteAccountState.Loading
+            try {
+                firestoreRepository.deleteAllUserData(user.uid).getOrThrow()
+                user.delete().await()
+                getGoogleSignInClient(context).signOut()
+                _currentUser.value = null
+                _authState.value = AuthState.Idle
+                _deleteAccountState.value = DeleteAccountState.Success
+            } catch (e: Exception) {
+                _deleteAccountState.value = DeleteAccountState.Error(e.message ?: "Ukjent feil")
+            }
+        }
+    }
+
+    fun resetDeleteAccountState() {
+        _deleteAccountState.value = DeleteAccountState.Idle
+    }
 }
 
 sealed class AuthState {
@@ -80,4 +106,11 @@ sealed class AuthState {
     object Loading : AuthState()
     object Success : AuthState()
     data class Error(val message: String) : AuthState()
+}
+
+sealed class DeleteAccountState {
+    object Idle : DeleteAccountState()
+    object Loading : DeleteAccountState()
+    object Success : DeleteAccountState()
+    data class Error(val message: String) : DeleteAccountState()
 }

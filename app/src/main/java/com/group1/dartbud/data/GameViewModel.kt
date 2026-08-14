@@ -3,6 +3,7 @@ package com.group1.dartbud.viewmodel
 import com.group1.dartbud.data.FirestoreRepository
 import com.group1.dartbud.data.FirestoreGame
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group1.dartbud.data.*
@@ -20,6 +21,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _games = MutableStateFlow<List<GameEntity>>(emptyList())
     val games: StateFlow<List<GameEntity>> = _games.asStateFlow()
+
+    private val _saveGameError = MutableStateFlow<String?>(null)
+    val saveGameError: StateFlow<String?> = _saveGameError.asStateFlow()
 
     init {
         val database = DartBudDatabase.getDatabase(application)
@@ -118,8 +122,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                // Håndter feil
-                e.printStackTrace()
+                Log.e("GameViewModel", "saveGame failed", e)
+                _saveGameError.value = e.message ?: "Failed to save game"
             }
         }
     }

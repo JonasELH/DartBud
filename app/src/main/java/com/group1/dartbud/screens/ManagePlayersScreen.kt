@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -34,8 +35,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.group1.dartbud.R
 import com.group1.dartbud.data.PlayerEntity
-import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.AuthViewModel
+import com.group1.dartbud.viewmodel.DeleteAccountState
+import com.group1.dartbud.viewmodel.PlayerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,11 +55,23 @@ fun ManagePlayersScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var newPlayerName by remember { mutableStateOf("") }
     var showCreateError by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
     val currentUser by authViewModel.currentUser.collectAsState()
+    val deleteAccountState by authViewModel.deleteAccountState.collectAsState()
     val userProfiles by viewModel.userProfiles.collectAsState()
     val localProfiles by viewModel.localProfiles.collectAsState()
     val allPlayers by viewModel.players.collectAsState()
+
+    LaunchedEffect(deleteAccountState) {
+        if (deleteAccountState is DeleteAccountState.Success) {
+            authViewModel.resetDeleteAccountState()
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     LaunchedEffect(currentUser) {
         viewModel.setGoogleUserId(currentUser?.uid)
@@ -333,7 +347,81 @@ fun ManagePlayersScreen(
                     }
                 }
             }
+
+            if (currentUser != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = { showDeleteAccountDialog = true },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text(
+                        "Delete Account",
+                        color = Color(0xFFFF5252).copy(alpha = 0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
         }
+    }
+
+    // Delete Account Dialog
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            title = {
+                Text("Delete Account?", fontWeight = FontWeight.Bold, color = Color.White)
+            },
+            text = {
+                Text(
+                    "This will permanently delete your account and all associated data — game history, profiles and statistics. This cannot be undone.",
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        authViewModel.deleteAccount(context)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
+                ) {
+                    if (deleteAccountState is DeleteAccountState.Loading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Delete permanently")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xDD000000)
+        )
+    }
+
+    if (deleteAccountState is DeleteAccountState.Error) {
+        AlertDialog(
+            onDismissRequest = { authViewModel.resetDeleteAccountState() },
+            title = { Text("Error", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Could not delete account. Please sign out and sign in again, then try once more.",
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { authViewModel.resetDeleteAccountState() }) {
+                    Text("OK", color = Color(0xFFFFD700))
+                }
+            },
+            containerColor = Color(0xDD000000)
+        )
     }
 
     // Create Dialog

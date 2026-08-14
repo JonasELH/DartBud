@@ -3,8 +3,9 @@ package com.group1.dartbud.data
 
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
 
 data class FirestorePlayerProfile(
     val profileId: String = "",
@@ -155,10 +156,36 @@ class FirestoreRepository {
         }
     }
 
+    suspend fun deleteAllUserData(userId: String): Result<Unit> {
+        return try {
+            val profilesSnapshot = firestore
+                .collection("users")
+                .document(userId)
+                .collection("profiles")
+                .get()
+                .await()
+            profilesSnapshot.documents.forEach { it.reference.delete().await() }
+
+            val gamesSnapshot = firestore
+                .collection("users")
+                .document(userId)
+                .collection("games")
+                .get()
+                .await()
+            gamesSnapshot.documents.forEach { it.reference.delete().await() }
+
+            firestore.collection("users").document(userId).delete().await()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // REAL-TIME LISTENERS (valgfritt)
 
-    fun getUserProfilesFlow(userId: String): Flow<List<FirestorePlayerProfile>> = flow {
-        firestore
+    fun getUserProfilesFlow(userId: String): Flow<List<FirestorePlayerProfile>> = callbackFlow {
+        val registration = firestore
             .collection("users")
             .document(userId)
             .collection("profiles")
@@ -169,7 +196,9 @@ class FirestoreRepository {
                     doc.toObject(FirestorePlayerProfile::class.java)
                 } ?: emptyList()
 
-                // Emit til flow (trenger coroutine context)
+                trySend(profiles)
             }
+
+        awaitClose { registration.remove() }
     }
 }

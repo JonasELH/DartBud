@@ -252,7 +252,7 @@ fun GameScreen(
             return Pair(true, "BUST! Score under 0")
         }
 
-        if (newScore == 1) {
+        if (newScore == 1 && doubleOutEnabled) {
             return Pair(true, "BUST! Cannot finish on 1")
         }
 
@@ -381,6 +381,13 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            player1 = player1.copy(
+                                lastThrow = throwValue,
+                                highestScore = maxOf(player1.highestScore, throwValue),
+                                roundsPlayed = player1.roundsPlayed + 1,
+                                average = recalculateAverage(player1)
+                            )
+                            player1RoundHistory = player1RoundHistory + throwValue
                             winner = player1
                             showWinDialog = true
                             return
@@ -410,6 +417,13 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            player2 = player2.copy(
+                                lastThrow = throwValue,
+                                highestScore = maxOf(player2.highestScore, throwValue),
+                                roundsPlayed = player2.roundsPlayed + 1,
+                                average = recalculateAverage(player2)
+                            )
+                            player2RoundHistory = player2RoundHistory + throwValue
                             winner = player2
                             showWinDialog = true
                             return
@@ -455,6 +469,14 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            val roundTotalNow = (throw1 ?: 0) + throwValue
+                            player1 = player1.copy(
+                                lastThrow = roundTotalNow,
+                                highestScore = maxOf(player1.highestScore, roundTotalNow),
+                                roundsPlayed = player1.roundsPlayed + 1,
+                                average = recalculateAverage(player1)
+                            )
+                            player1RoundHistory = player1RoundHistory + roundTotalNow
                             winner = player1
                             showWinDialog = true
                             return
@@ -486,6 +508,14 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            val roundTotalNow = (throw1 ?: 0) + throwValue
+                            player2 = player2.copy(
+                                lastThrow = roundTotalNow,
+                                highestScore = maxOf(player2.highestScore, roundTotalNow),
+                                roundsPlayed = player2.roundsPlayed + 1,
+                                average = recalculateAverage(player2)
+                            )
+                            player2RoundHistory = player2RoundHistory + roundTotalNow
                             winner = player2
                             showWinDialog = true
                             return

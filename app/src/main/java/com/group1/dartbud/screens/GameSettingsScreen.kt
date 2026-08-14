@@ -51,6 +51,7 @@ fun GameSettingsScreen(
     var doubleOut by remember { mutableStateOf(true) }
     var expandedPlayer1 by remember { mutableStateOf(false) }
     var expandedPlayer2 by remember { mutableStateOf(false) }
+    var showSamePlayerWarning by remember { mutableStateOf(false) }
 
     val currentUser by authViewModel.currentUser.collectAsState()
     val userProfiles by viewModel.userProfiles.collectAsState()
@@ -518,9 +519,14 @@ fun GameSettingsScreen(
                         interactionSource = startInteraction,
                         indication = null
                     ) {
-                        val p1Name = player1 ?: "PLAYER 1"
-                        val p2Name = player2 ?: "PLAYER 2"
-                        navController.navigate("game/$doubleIn/$doubleOut/$p1Name/$p2Name")
+                        if (player1 != null && player2 != null && player1 == player2) {
+                            showSamePlayerWarning = true
+                        } else {
+                            showSamePlayerWarning = false
+                            val p1Name = player1 ?: "PLAYER 1"
+                            val p2Name = player2 ?: "PLAYER 2"
+                            navController.navigate("game/$doubleIn/$doubleOut/$p1Name/$p2Name")
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -530,6 +536,17 @@ fun GameSettingsScreen(
                     fontSize = 24.sp,
                     color = Color.White,
                     letterSpacing = 2.sp
+                )
+            }
+
+            if (showSamePlayerWarning) {
+                Text(
+                    "Player 1 and Player 2 must be different",
+                    color = Color(0xFFFF5252),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 )
             }
         }
