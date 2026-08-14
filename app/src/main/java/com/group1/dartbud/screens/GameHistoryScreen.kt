@@ -24,6 +24,9 @@ import com.group1.dartbud.viewmodel.PlayerViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Viser en liste over alle tidligere spilte kamper, hentet fra Room-databasen via
+// GameViewModel. Selve statistikken for hver kamp lastes lenger ned, per kort,
+// i stedet for alt på én gang her.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameHistoryScreen(
@@ -107,6 +110,9 @@ fun GameHistoryScreen(
     }
 }
 
+// Ett kort per tidligere kamp. Statistikken (snitt, høyeste score, osv.) hentes asynkront
+// per kort fremfor å hente alt på forhånd i GameHistoryScreen, siden hver kamp har egne
+// GameStatsEntity-rader i databasen som må slås opp separat.
 @Composable
 fun GameHistoryCard(
     game: GameEntity,
@@ -117,7 +123,8 @@ fun GameHistoryCard(
     var player1Stats by remember { mutableStateOf<GameStatsEntity?>(null) }
     var player2Stats by remember { mutableStateOf<GameStatsEntity?>(null) }
 
-    // Load stats when card is created
+    // Laster stats når kortet vises. Nøkkelen er game.gameId, så effekten kjører kun
+    // på nytt hvis kortet faktisk representerer en annen kamp (ikke ved hver recomposition)
     LaunchedEffect(game.gameId) {
         val stats = gameViewModel.getStatsByGame(game.gameId)
         player1Stats = stats.find { it.playerId == game.player1Id }

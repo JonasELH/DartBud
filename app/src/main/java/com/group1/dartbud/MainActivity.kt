@@ -29,9 +29,13 @@ import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.GameViewModel
 import com.group1.dartbud.viewmodel.AuthViewModel
 
+// Appens eneste Activity (single-activity-app). All navigasjon skjer internt
+// via Compose Navigation (NavHost) i DartBudApp, ikke via egne Activities.
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Lar appen tegne bak system-bars (status-/navigasjonslinjen) for
+        // et mer moderne, kant-til-kant utseende.
         enableEdgeToEdge()
         setContent {
             DartBudTheme {
@@ -41,13 +45,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Rot-composable som setter opp navigasjon og de delte ViewModelene.
 @Composable
 fun DartBudApp() {
     val navController = rememberNavController()
+    // ViewModelene opprettes her, på toppnivå, og sendes ned til hver skjerm
+    // som trenger dem. Siden de er scopet til DartBudApp (som lever så lenge
+    // Activity-en gjør), overlever de navigasjon mellom skjermer - f.eks.
+    // beholder gameViewModel spilltilstand når man går fra game_settings til
+    // game og videre til game_history.
     val playerViewModel: PlayerViewModel = viewModel()
     val gameViewModel: GameViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
 
+    // Holder gameViewModel oppdatert med hvilken bruker som er innlogget,
+    // slik at spilldata lagres/hentes for riktig Google-bruker i Firestore.
     LaunchedEffect(Unit) {
         authViewModel.googleUserId.collect { userId ->
             gameViewModel.setGoogleUserId(userId)
@@ -55,23 +67,30 @@ fun DartBudApp() {
     }
 
     Scaffold { innerPadding ->
+        // Navigasjonsgrafen for hele appen. Alle ruter deler samme
+        // navController og de samme ViewModelene definert over.
         NavHost(
             navController = navController,
             startDestination = "login",
             modifier = Modifier.padding(innerPadding)
         ) {
+            // Innloggingsskjerm (Google Sign-In). Første skjerm brukeren ser.
             composable("login") {
                 LoginScreen(
                     navController = navController,
                     authViewModel = authViewModel
                 )
             }
+            // Hovedmeny etter innlogging: herfra navigerer man videre til
+            // regler, spilloppsett, historikk og spilleradministrasjon.
             composable("main_menu") {
                 MainMenuScreen(
                     navController = navController,
                     authViewModel = authViewModel
                 )
             }
+            // Regler for 501-spillet. Egne enter/exit-transisjoner (glid inn/ut
+            // fra høyre) brukes på denne og rutene under for en "drill down"-følelse.
             composable(
                 "rules",
                 enterTransition = {
@@ -90,6 +109,8 @@ fun DartBudApp() {
                 RulesScreen(navController = navController)
             }
 
+            // Skjerm for å sette opp en ny kamp: double in/out og valg av
+            // spillere (bruker playerViewModel for spillerlisten).
             composable(
                 "game_settings",
                 enterTransition = {
@@ -111,6 +132,8 @@ fun DartBudApp() {
                 )
             }
 
+            // Historikk over tidligere spilte kamper, hentet via gameViewModel
+            // (og playerViewModel for å slå opp spillernavn).
             composable(
                 "game_history",
                 enterTransition = {
@@ -133,6 +156,7 @@ fun DartBudApp() {
                 )
             }
 
+            // Administrasjon av spillere (legge til/fjerne/redigere).
             composable(
                 "managePlayers",
                 enterTransition = {
@@ -154,6 +178,9 @@ fun DartBudApp() {
                 )
             }
 
+            // Selve spillskjermen. Spillinnstillingene sendes som navigasjons-
+            // argumenter i ruten (ikke via ViewModel), slik at de er en del av
+            // navController sin backstack og overlever f.eks. prosessgjenoppretting.
             composable(
                 route = "game/{doubleIn}/{doubleOut}/{player1Name}/{player2Name}",
                 arguments = listOf(
@@ -175,6 +202,9 @@ fun DartBudApp() {
                     ) + fadeOut(animationSpec = tween(300))
                 }
             ) { backStackEntry ->
+                // Fallback-verdier her dekker tilfeller der argumentene av en
+                // eller annen grunn mangler (bør normalt ikke skje siden alle
+                // er markert som påkrevde typer over).
                 val doubleIn = backStackEntry.arguments?.getBoolean("doubleIn") ?: false
                 val doubleOut = backStackEntry.arguments?.getBoolean("doubleOut") ?: true
                 val player1Name = backStackEntry.arguments?.getString("player1Name") ?: "PLAYER 1"

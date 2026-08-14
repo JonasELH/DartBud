@@ -11,6 +11,8 @@ private val PermanentMarkerFontFamily = FontFamily(
     Font(R.font.permanentmarker_regular, FontWeight.Normal)
 )
 
+// Egendefinert typografi for appen, satt opp med håndskrift-fonten
+// Permanent Marker på bodyLarge.
 val AppTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = PermanentMarkerFontFamily,

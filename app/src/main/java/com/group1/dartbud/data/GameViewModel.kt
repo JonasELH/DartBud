@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for spillhistorikk og lagring av ferdigspilte 501-spill.
+ * Lagrer alltid til Room lokalt, og speiler i tillegg til Firestore hvis brukeren
+ * er innlogget med en Google-konto (currentGoogleUserId er satt).
+ */
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val firestoreRepository = FirestoreRepository()
     private var currentGoogleUserId: String? = null
@@ -19,9 +24,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: GameRepository
     private val playerRepository: PlayerRepository
 
+    // Alle spill fra Room, observert av UI (f.eks. historikkskjerm).
     private val _games = MutableStateFlow<List<GameEntity>>(emptyList())
     val games: StateFlow<List<GameEntity>> = _games.asStateFlow()
 
+    // Settes hvis saveGame feiler, slik at UI kan vise en feilmelding til brukeren.
     private val _saveGameError = MutableStateFlow<String?>(null)
     val saveGameError: StateFlow<String?> = _saveGameError.asStateFlow()
 
@@ -30,6 +37,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         repository = GameRepository(database.gameDao(), database.gameStatsDao())
         playerRepository = PlayerRepository(database.playerDao())
 
+        // Følger Room-tabellen kontinuerlig og speiler den til _games.
         viewModelScope.launch {
             repository.allGames.collect { gameList ->
                 _games.value = gameList
@@ -37,6 +45,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Kalles ved login/logout for å styre om spillhistorikk skal synkroniseres fra Firestore.
     fun setGoogleUserId(userId: String?) {
         currentGoogleUserId = userId
         if (userId != null) {
@@ -45,6 +54,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // NB: henter spillene fra Firestore, men gjør foreløpig ingenting med resultatet
+    // (verken vises i UI eller caches i Room) - onSuccess-blokken er tom.
     private fun syncGamesFromFirestore(userId: String) {
         viewModelScope.launch {
             val result = firestoreRepository.getUserGames(userId)
@@ -55,6 +66,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Lagrer et ferdigspilt spill: oppretter GameEntity + to GameStatsEntity-rader i Room,
+    // og hvis brukeren er innlogget, speiler i tillegg spillet til Firestore med
+    // spillernavn og alle statistikkfelt flatt ut (se FirestoreGame).
     fun saveGame(
         player1Id: Int,
         player2Id: Int,
@@ -122,6 +136,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
+                // Fanger feil fra hele lagre-forløpet (Room- eller Firestore-skriving)
+                // og eksponerer den via _saveGameError slik at UI kan varsle brukeren.
                 Log.e("GameViewModel", "saveGame failed", e)
                 _saveGameError.value = e.message ?: "Failed to save game"
             }
@@ -132,6 +148,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getStatsByGame(gameId)
     }
 
+    // NB: getStatsByPlayer i repository returnerer en Flow (kan sende flere verdier
+    // over tid), men her collectes kun første emisjon før funksjonen returnerer -
+    // den henter altså gjeldende stats som en engangsliste, ikke en løpende strøm.
     suspend fun getStatsByPlayer(playerId: Int): List<GameStatsEntity> {
         var stats: List<GameStatsEntity> = emptyList()
         repository.getStatsByPlayer(playerId).collect {

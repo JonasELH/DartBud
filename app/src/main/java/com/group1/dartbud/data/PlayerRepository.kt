@@ -2,8 +2,14 @@ package com.group1.dartbud.data
 
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Repository-lag mellom [PlayerViewModel] og Room for spillerdata. Kapsler inn
+ * [PlayerDao] slik at ViewModel jobber mot enklere metodenavn i stedet for DAO-en
+ * direkte. Firestore-synkronisering håndteres separat i ViewModel via [FirestoreRepository].
+ */
 class PlayerRepository(private val playerDao: PlayerDao) {
 
+    // Alle spillere i Room, som Flow slik at UI oppdateres automatisk ved endringer.
     val allPlayers: Flow<List<PlayerEntity>> = playerDao.getAllPlayers()
 
     suspend fun getPlayerById(id: Int): PlayerEntity? {

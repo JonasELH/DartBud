@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.navigation.NavController
 
+// Statisk skjerm som forklarer 501-reglene for spillere som er nye i darts.
+// Ren tekstvisning, ingen state eller interaksjon utover tilbake-knappen.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RulesScreen(navController: NavController) {

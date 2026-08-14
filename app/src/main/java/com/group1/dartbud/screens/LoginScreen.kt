@@ -33,6 +33,8 @@ import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.utils.NetworkUtils
 import kotlinx.coroutines.launch
 
+// Innloggingsskjermen: brukeren kan enten logge inn med Google (krever internett) eller
+// fortsette som gjest (kun lokale profiler, ingen sky-synkronisering).
 @Composable
 fun LoginScreen(
     navController: NavController,
@@ -48,7 +50,9 @@ fun LoginScreen(
     // ⬇️ NY STATE FOR NETWORK ERROR ⬇️
     var showNetworkError by remember { mutableStateOf(false) }
 
-    // Google Sign-In launcher
+    // Google Sign-In launcher. Firebase-innloggingen selv skjer i authViewModel -
+    // denne launcheren håndterer kun selve Google-kontovalg-dialogen (Android sin
+    // ActivityResult-API) og sender resultatet videre til authViewModel.signInWithGoogle
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -64,6 +68,9 @@ fun LoginScreen(
     }
 
     // Håndter innlogging og profil-opprettelse
+    // Trigges hver gang currentUser endrer seg (dvs. når Firebase-innlogging fullføres).
+    // Første gang en Google-bruker logger inn opprettes det automatisk en primær
+    // spillerprofil for dem, slik at de har minst én profil å velge fra i spillet.
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
             scope.launch {
@@ -81,6 +88,8 @@ fun LoginScreen(
                 playerViewModel.setGoogleUserId(user.uid)
                 gameViewModel.setGoogleUserId(user.uid)
 
+                // "login" fjernes fra back-stacken slik at "tilbake" fra hovedmenyen
+                // ikke tar brukeren tilbake til innloggingsskjermen
                 navController.navigate("main_menu") {
                     popUpTo("login") { inclusive = true }
                 }
@@ -207,6 +216,8 @@ fun LoginScreen(
             Button(
                 onClick = {
                     // ⬇️ SJEKK NETWORK FØRST! ⬇️
+                    // Google Sign-In-flowen feiler kryptisk uten internett, så vi sjekker
+                    // eksplisitt her og viser en tydelig feilmelding i stedet
                     if (!NetworkUtils.isNetworkAvailable(context)) {
                         // Vis error dialog
                         showNetworkError = true

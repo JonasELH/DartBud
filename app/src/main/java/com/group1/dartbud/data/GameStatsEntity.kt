@@ -5,6 +5,15 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Room-entitet for én spillers statistikk i ett spill (f.eks. snitt per kast/runde,
+ * høyeste enkeltscore, antall kast/runder, og sluttscore).
+ *
+ * Foreign keys med CASCADE sørger for at stats-rader automatisk slettes hvis det
+ * tilhørende spillet eller spilleren slettes, slik at man ikke sitter igjen med
+ * foreldreløse rader i game_stats. Indeksene på gameId/playerId gjør oppslag
+ * (se [GameStatsDao]) raskere.
+ */
 @Entity(
     tableName = "game_stats",
     foreignKeys = [

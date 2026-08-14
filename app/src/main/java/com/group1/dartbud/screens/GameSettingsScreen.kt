@@ -38,6 +38,8 @@ import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.AuthViewModel
 
+// Skjermen for å sette opp en ny kamp: velge spiller 1 og 2, og skru på/av
+// double-in/double-out reglene, før man navigerer videre til selve GameScreen.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameSettingsScreen(
@@ -49,15 +51,17 @@ fun GameSettingsScreen(
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
-    var expandedPlayer1 by remember { mutableStateOf(false) }
+    var expandedPlayer1 by remember { mutableStateOf(false) } // Styrer om dropdown for spiller 1 er åpen
     var expandedPlayer2 by remember { mutableStateOf(false) }
     var showSamePlayerWarning by remember { mutableStateOf(false) }
 
     val currentUser by authViewModel.currentUser.collectAsState()
-    val userProfiles by viewModel.userProfiles.collectAsState()
-    val localProfiles by viewModel.localProfiles.collectAsState()
+    val userProfiles by viewModel.userProfiles.collectAsState() // Google-innloggede profiler
+    val localProfiles by viewModel.localProfiles.collectAsState() // Lokale (gjeste-)profiler uten konto
     val allPlayers by viewModel.players.collectAsState()
 
+    // Synkroniser viewModel med gjeldende innlogget bruker, slik at "My Profiles"-listen
+    // viser riktige profiler når brukeren logger inn/ut eller skjermen gjenbrukes
     LaunchedEffect(currentUser) {
         viewModel.setGoogleUserId(currentUser?.uid)
     }
@@ -519,12 +523,18 @@ fun GameSettingsScreen(
                         interactionSource = startInteraction,
                         indication = null
                     ) {
+                        // To spillere med samme navn ville gjort det umulig å skille dem i
+                        // GameScreen (spillere identifiseres ofte på navn der), så det blokkeres her
                         if (player1 != null && player2 != null && player1 == player2) {
                             showSamePlayerWarning = true
                         } else {
                             showSamePlayerWarning = false
+                            // Uvalgte spillere får default-navn - lar folk spille en rask kamp
+                            // uten å måtte opprette profiler først
                             val p1Name = player1 ?: "PLAYER 1"
                             val p2Name = player2 ?: "PLAYER 2"
+                            // Alle innstillinger sendes som del av navigasjonsruten (ikke delt
+                            // ViewModel-state), så GameScreen kan starte helt uavhengig
                             navController.navigate("game/$doubleIn/$doubleOut/$p1Name/$p2Name")
                         }
                     },

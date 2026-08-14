@@ -39,6 +39,8 @@ import com.group1.dartbud.viewmodel.AuthViewModel
 import com.group1.dartbud.viewmodel.DeleteAccountState
 import com.group1.dartbud.viewmodel.PlayerViewModel
 
+// Skjerm for å opprette, redigere og slette spillerprofiler (både Google-tilknyttede
+// "My Profiles" og lokale gjesteprofiler), samt slette hele Google-kontoen.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagePlayersScreen(
@@ -46,6 +48,8 @@ fun ManagePlayersScreen(
     viewModel: PlayerViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel()
 ) {
+    // Dialog-state kommer i par: hvilken dialog som vises, og hvilken spiller/verdi
+    // den opererer på (satt idet man trykker rediger/slett-knappen på et spillerkort)
     var showDeleteDialog by remember { mutableStateOf(false) }
     var playerToDelete by remember { mutableStateOf<PlayerEntity?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -64,6 +68,8 @@ fun ManagePlayersScreen(
     val localProfiles by viewModel.localProfiles.collectAsState()
     val allPlayers by viewModel.players.collectAsState()
 
+    // Når kontosletting er fullført, send brukeren til login og tøm hele back-stacken
+    // (samme prinsipp som ved vanlig utlogging)
     LaunchedEffect(deleteAccountState) {
         if (deleteAccountState is DeleteAccountState.Success) {
             authViewModel.resetDeleteAccountState()
@@ -472,10 +478,15 @@ fun ManagePlayersScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        // Navnet må være ikke-tomt og unikt på tvers av ALLE spillere (både
+                        // Google-profiler og lokale), siden navnet brukes til å identifisere
+                        // spillere andre steder i appen (bl.a. i GameSettingsScreen)
                         val trimmedName = newPlayerName.trim()
                         if (trimmedName.isBlank() || allPlayers.any { it.username == trimmedName }) {
                             showCreateError = true
                         } else {
+                            // Innlogget bruker får profilen koblet til Google-kontoen sin
+                            // (synkes til Firestore), ellers lagres den kun lokalt i Room
                             if (currentUser != null) {
                                 viewModel.addUserProfile(
                                     googleUserId = currentUser!!.uid,
@@ -609,6 +620,9 @@ fun ManagePlayersScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        // Samme unikhets-sjekk som ved opprettelse, men spilleren får
+                        // beholde SITT EGET navn uendret (derfor sjekkes bare mot andre
+                        // spilleres navn, ikke mot playerToEdit sitt eget)
                         val trimmedName = editedPlayerName.trim()
                         if (trimmedName.isBlank() ||
                             (trimmedName != playerToEdit?.username && allPlayers.any { it.username == trimmedName })) {
@@ -647,6 +661,9 @@ fun ManagePlayersScreen(
     }
 }
 
+// Én rad i spillerlisten: navn (+ stjerne hvis primærprofil) og rediger/slett-knapper.
+// Selve dialogene for redigering/sletting eies av foreldreskjermen, denne komponenten
+// bare rapporterer at knappen ble trykket via onEdit/onDelete-callbackene.
 @Composable
 fun PlayerCardInline(
     player: PlayerEntity,

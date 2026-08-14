@@ -31,6 +31,7 @@ import androidx.navigation.NavController
 import com.group1.dartbud.R
 import com.group1.dartbud.viewmodel.AuthViewModel
 
+// Hovedmenyen: enkel navigasjonshub til Play Game, Game History og Rules, pluss logg ut.
 @Composable
 fun MainMenuScreen(
     navController: NavController,
@@ -58,8 +59,12 @@ fun MainMenuScreen(
         IconButton(
             onClick = {
                 authViewModel.signOut(context)
+                // Nullstill google-bruker-id i begge viewmodels slik at de faller tilbake
+                // til å vise kun lokale (gjeste-)profiler/kamper etter utlogging
                 playerViewModel.setGoogleUserId(null)
                 gameViewModel.setGoogleUserId(null)
+                // popUpTo(0) tømmer HELE back-stacken - forhindrer at "tilbake" fra login
+                // kan ta brukeren inn igjen i en økt de nettopp logget ut av
                 navController.navigate("login") {
                     popUpTo(0) { inclusive = true }
                 }

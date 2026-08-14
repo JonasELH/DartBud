@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.ui.platform.LocalDensity
 
+// Ett spillerobjekt i den pågående kampen. Dette er UI-state, ikke databasen -
+// permanent lagring (GameStatsEntity) skjer først når kampen er vunnet.
 data class Player(
     val name: String,
     var score: Int = 501,
@@ -42,31 +44,40 @@ data class Player(
     var average: Double = 0.0,
     var roundsPlayed: Int = 0,
     var dartsThrown: Int = 0,
-    var hasScored: Boolean = false
+    var hasScored: Boolean = false // Har spilleren fått godkjent (double-in) treff enda?
 )
 
+// Én enkelt dart-kast, brukt til å bygge opp dartHistory slik at undo kan spole tilbake.
 data class DartThrow(
     val playerId: Int,
     val value: Int,
     val wasDouble: Boolean,
-    val throwNumber: Int
+    val throwNumber: Int // 1, 2 eller 3 - hvilket kast i runden dette var
 )
 
+// Hjelpefunksjon for å skalere ned skriftstørrelse uten å gå over en maks-grense
 fun TextUnit.coerceAtMost(maximumValue: TextUnit): TextUnit {
     return if (this.value > maximumValue.value) maximumValue else this
 }
 
+// Selve spillskjermen for en 501-kamp. All spillogikk (bust, checkout, undo, snitt)
+// ligger nested her inne som lokale funksjoner, siden de kun gir mening sammen med
+// denne skjermens state (throw1/2/3, currentPlayer, osv.).
 @Composable
 fun GameScreen(
     navController: NavController,
-    doubleInEnabled: Boolean = false,
-    doubleOutEnabled: Boolean = true,
+    doubleInEnabled: Boolean = false, // Krever double for å "åpne" scoring (double-in)
+    doubleOutEnabled: Boolean = true, // Krever double (eller bullseye) for å avslutte kampen
     player1Name: String = "PLAYER 1",
     player2Name: String = "PLAYER 2",
     gameViewModel: GameViewModel = viewModel(),
     playerViewModel: PlayerViewModel = viewModel()
 ) {
 
+    // Skjermstørrelse basert på device-konfigurasjon, brukt til å regne ut skriftstørrelser
+    // lenger ned. Merk: playerCardHeight/throwButtonHeight/osv. her blir skygget av
+    // nye variabler med samme navn inne i BoxWithConstraints under (målt fra faktisk
+    // tilgjengelig plass), så det er kun font-størrelsene herfra som faktisk brukes i layoutet.
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
@@ -84,20 +95,26 @@ fun GameScreen(
     val numberButtonFontSize = (numberButtonHeight.value * 0.4f).coerceIn(24f, 32f).sp
 
     val scope = rememberCoroutineScope()
+
+    // Spillerne sin state. player1/player2 er "kilden til sannhet" for score, snitt osv,
+    // og oppdateres kun via .copy() inne i confirmThrow/undoLastThrow.
     var player1 by remember { mutableStateOf(Player(player1Name)) }
     var player2 by remember { mutableStateOf(Player(player2Name)) }
-    var currentPlayer by remember { mutableStateOf(1) }
-    var firstPlayer by remember { mutableStateOf(1) }
+    var currentPlayer by remember { mutableStateOf(1) } // 1 eller 2 - hvem sin tur er det
+    var firstPlayer by remember { mutableStateOf(1) } // Brukes ved rematch for å bytte hvem som starter
 
+    // De tre kastene i inneværende runde. Holdes som nullable Int slik at UI-et
+    // (ThrowButton) vet om et kast enda ikke er registrert.
     var throw1 by remember { mutableStateOf<Int?>(null) }
     var throw2 by remember { mutableStateOf<Int?>(null) }
     var throw3 by remember { mutableStateOf<Int?>(null) }
     var throw1WasDouble by remember { mutableStateOf(false) }
     var throw2WasDouble by remember { mutableStateOf(false) }
     var throw3WasDouble by remember { mutableStateOf(false) }
-    var currentThrow by remember { mutableStateOf(1) }
-    var overallRound by remember { mutableStateOf(1) }
+    var currentThrow by remember { mutableStateOf(1) } // Hvilket av de 3 kastene i runden vi er på nå
+    var overallRound by remember { mutableStateOf(1) } // Teller opp for hver runde (begge spillere kastet)
 
+    // Tallpad-input: tallet brukeren har skrevet inn og hvilken multiplikator (Double/Triple) som er valgt
     var inputValue by remember { mutableStateOf("") }
     var multiplier by remember { mutableStateOf(1) }
 
@@ -106,15 +123,19 @@ fun GameScreen(
     var showWinDialog by remember { mutableStateOf(false) }
     var winner by remember { mutableStateOf<Player?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
-    var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) }
+    var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) } // Historikk over rundetotaler, vist i UI
     var player2RoundHistory by remember { mutableStateOf(listOf<Int>()) }
+    // Full logg over hvert enkelt kast (begge spillere, hele kampen). Dette er det som
+    // gjør undo mulig - vi kan "spole tilbake" state ved å se på siste oppføring.
     var dartHistory by remember { mutableStateOf(listOf<DartThrow>()) }
 
+    // Verdien det aktuelle tallpad-inputet representerer, med multiplikator tatt hensyn til
     val currentInputScore = if (inputValue.isNotEmpty()) {
         (inputValue.toIntOrNull() ?: 0) * multiplier
     } else {
         0
     }
+    // Et enkelt dart-kast kan maks gi 60 poeng (Triple 20), så alt utenfor 0..60 er ugyldig
     val isValidInput = if (inputValue.isEmpty()) {
         false
     } else {
@@ -123,6 +144,10 @@ fun GameScreen(
 
     val roundTotal = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
 
+    // Slår opp anbefalt utgangs-kombinasjon (checkout) for en gjenstående score, vist
+    // på PlayerCard slik at spilleren ser hvordan de kan avslutte kampen. Tabellen dekker
+    // alle scorer som faktisk er mulig å fullføre på 1-3 kast (maks er 170 = T20 T20 Bull).
+    // 2..40 (partall) dekkes generisk med "D{score/2}" siden alle disse er en ren double.
     fun calculateCheckout(score: Int): String {
         return when (score) {
             170 -> "T20 T20 Bull"
@@ -232,6 +257,8 @@ fun GameScreen(
             60 -> "20 D20"
             in 2..40 step 2 -> "D${score / 2}"
             50 -> "Bull"
+            // Disse scorene kan ikke fullføres på noen lovlig måte (for høye, eller ikke
+            // nåbare med en gyldig kombinasjon av kast som ender på en double)
             else -> if (score > 170 || score == 169 || score == 168 || score == 166 ||
                 score == 165 || score == 163 || score == 162 || score == 159) {
                 "No out shot"
@@ -239,12 +266,23 @@ fun GameScreen(
         }
     }
 
+    // Gjennomsnittlig poengsum per tre kast ("three-dart average"), den vanlige måten
+    // å måle en dartspillers nivå på. 501 - score = totalt antall poeng scoret så langt.
     fun recalculateAverage(player: Player): Double {
         if (player.dartsThrown == 0) return 0.0
         val totalScoreThrown = 501 - player.score
         return (totalScoreThrown.toDouble() / player.dartsThrown) * 3
     }
 
+    // Sjekker om et kast (eller kastet som akkurat brakte scoren til 0) er en bust
+    // etter 501-reglene:
+    //  1. Går scoren under 0 -> alltid bust.
+    //  2. Havner du på nøyaktig 1 med double-out aktivert -> alltid bust, siden man da
+    //     aldri kan avslutte på en double (laveste double er D1=2).
+    //  3. Havner du på nøyaktig 0 med double-out aktivert, men siste kast ikke var en
+    //     double (og ikke bullseye, som teller som D25) -> bust.
+    // throwTotal sendes inn som 0 her fordi kalleren allerede har trukket fra scoren
+    // før checkBust kalles - currentScore er dermed allerede "scoren etter kastet".
     fun checkBust(currentScore: Int, throwTotal: Int, lastDartWasDouble: Boolean, lastDartValue: Int): Pair<Boolean, String> {
         val newScore = currentScore - throwTotal
 
@@ -263,6 +301,10 @@ fun GameScreen(
         return Pair(false, "")
     }
 
+    // Registrerer det gjeldende tallpad-inputet som spillerens neste kast. Dette er
+    // hovedfunksjonen for spilllogikken: den håndterer double-in-krav, trekker fra
+    // score, sjekker for bust, oppdaterer statistikk og bytter spiller/runde når runden
+    // er ferdig (3 kast) eller kampen er vunnet.
     fun confirmThrow() {
         if (inputValue.isEmpty()) return
 
@@ -273,6 +315,11 @@ fun GameScreen(
         val activePlayer = if (currentPlayer == 1) player1 else player2
 
         // SPESIELL HÅNDTERING for throw 3 ved double in bust
+        // Double-in: spilleren må treffe en double før poengene i det hele tatt begynner
+        // å telle. Har spilleren ikke fått en double i løpet av runden (throw1/throw2/dette
+        // kastet), er runden bomskutt uansett hva throwValue er - og siden dette er det
+        // TREDJE og siste kastet, går runden rett videre til neste spiller (i stedet for
+        // å bare hoppe til neste kast, som skjer i grenen under for throw 1/2).
         if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0 && currentThrow == 3) {
             val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
 
@@ -311,6 +358,9 @@ fun GameScreen(
             }
         }
 
+        // Samme double-in-sjekk som over, men for kast 1 og 2: her er ikke runden ferdig
+        // enda, så i stedet for å bytte spiller går vi bare videre til neste kast i runden
+        // (spilleren får fortsatt prøve å treffe en double på sine gjenværende kast).
         if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0 && currentThrow != 3) {
             val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
 
@@ -352,6 +402,14 @@ fun GameScreen(
             }
         }
 
+        // Selve poeng-registreringen for gjeldende kast. Strukturen er lik for currentThrow
+        // 1, 2 og 3, men de skiller seg i to viktige ting:
+        //  - Hvor mye av rundens totalsum som allerede er kastet (throw1/throw2 fra
+        //    tidligere kast i samme runde legges sammen med dette kastet).
+        //  - "Fast checkout": kampen kan avsluttes på ETHVERT av de 3 kastene (så snart
+        //    scoren treffer nøyaktig 0 og det ikke er bust), ikke bare på kast 3. Derfor
+        //    må dartsThrown/average/roundsPlayed oppdateres og winner/showWinDialog settes
+        //    i alle tre grenene under, ikke bare i throw==3-grenen.
         when (currentThrow) {
             1 -> {
                 throw1 = throwValue
@@ -364,13 +422,19 @@ fun GameScreen(
                         dartsThrown = player1.dartsThrown + 1
                     )
 
+                    // hasScored markerer at spilleren har "åpnet" scoringen sin (kun
+                    // relevant når double-in er aktivert - da må første poenggivende
+                    // kast være en double)
                     if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
                         player1 = player1.copy(hasScored = true)
                     }
 
                     if (newScore == 0) {
+                        // Scoren er nøyaktig 0 allerede på første kast - sjekk om dette er
+                        // et gyldig avslutningskast (double-out-krav)
                         val (isBust, message) = checkBust(newScore, 0, throw1WasDouble, throwValue)
                         if (isBust) {
+                            // Bust: gi tilbake poengene og gå videre til kast 2 i samme runde
                             bustMessage = message
                             showBustDialog = true
                             player1 = player1.copy(score = player1.score + throwValue)
@@ -381,6 +445,8 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            // Gyldig checkout på første kast - kampen er vunnet med bare
+                            // ett kast i runden. dartsThrown ble allerede talt med over.
                             player1 = player1.copy(
                                 lastThrow = throwValue,
                                 highestScore = maxOf(player1.highestScore, throwValue),
@@ -394,6 +460,7 @@ fun GameScreen(
                         }
                     }
                 } else {
+                    // Speilbilde av player1-grenen over, samme logikk for player2
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(
                         score = newScore,
@@ -431,6 +498,7 @@ fun GameScreen(
                     }
                 }
 
+                // Scoren traff ikke 0 (eller var bust) - gå videre til kast 2 og logg kastet
                 currentThrow = 2
                 dartHistory = dartHistory + DartThrow(
                     playerId = currentPlayer,
@@ -457,6 +525,8 @@ fun GameScreen(
                     if (newScore == 0) {
                         val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
                         if (isBust) {
+                            // Bust på kast 2: gi tilbake BEGGE kastene i runden (throw1 + dette),
+                            // ikke bare det siste, siden hele runden annulleres
                             bustMessage = message
                             showBustDialog = true
                             player1 = player1.copy(score = player1.score + (throw1 ?: 0) + throwValue)
@@ -469,6 +539,8 @@ fun GameScreen(
                             multiplier = 1
                             return
                         } else {
+                            // Gyldig checkout på kast 2 - lastThrow/highestScore skal telle
+                            // summen av begge kastene i runden, ikke bare dette ene kastet
                             val roundTotalNow = (throw1 ?: 0) + throwValue
                             player1 = player1.copy(
                                 lastThrow = roundTotalNow,
@@ -483,6 +555,7 @@ fun GameScreen(
                         }
                     }
                 } else {
+                    // Speilbilde av player1-grenen over
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(
                         score = newScore,
@@ -531,6 +604,12 @@ fun GameScreen(
                     throwNumber = 2
                 )
             }
+            // Siste kast i runden. I motsetning til kast 1 og 2 kalles checkBust her
+            // ALLTID (ikke bare når newScore == 0), fordi dette er siste sjanse i runden
+            // til å oppdage at spilleren gikk under 0 - hvis det skjedde på kast 1 eller 2
+            // fanges det ikke opp der (bust sjekkes kun ved score==0 i de kastene), men
+            // siden score kun blir mer negativ utover i runden vil det uansett fanges opp
+            // her, etter at alle 3 kastene er registrert.
             3 -> {
                 throw3 = throwValue
                 throw3WasDouble = isDouble
@@ -548,6 +627,9 @@ fun GameScreen(
                     val (isBust, message) = checkBust(newScore, 0, throw3WasDouble, throwValue)
 
                     if (isBust) {
+                        // Bust på siste kast: gi tilbake HELE rundens poengsum (total,
+                        // ikke bare throwValue), siden score allerede ble trukket fra bare
+                        // for dette ene kastet over
                         bustMessage = message
                         showBustDialog = true
                         val newDartsThrown = player1.dartsThrown + 1
@@ -556,6 +638,10 @@ fun GameScreen(
                             dartsThrown = newDartsThrown
                         )
                     } else {
+                        // Gyldig runde (eller gyldig checkout på siste kast). Snittet regnes
+                        // ut fra en midlertidig kopi med oppdatert score/dartsThrown, siden
+                        // player1 selv ikke er oppdatert med de nye verdiene enda på dette
+                        // tidspunktet i .copy()-kallet.
                         val newDartsThrown = player1.dartsThrown + 1
 
                         player1 = player1.copy(
@@ -573,6 +659,7 @@ fun GameScreen(
                         }
                     }
                 } else {
+                    // Speilbilde av player1-grenen over
                     val newScore = player2.score - throwValue
                     player2 = player2.copy(score = newScore)
 
@@ -616,6 +703,8 @@ fun GameScreen(
                     throwNumber = 3
                 )
 
+                // Runden er ferdig (3 kast kastet) uten at kampen ble vunnet - bytt spiller
+                // og nullstill kastene for neste runde
                 currentPlayer = if (currentPlayer == 1) 2 else 1
                 overallRound += 1
                 throw1 = null
@@ -632,6 +721,10 @@ fun GameScreen(
         multiplier = 1
     }
 
+    // Angrer det aller siste registrerte kastet (uansett hvilken spiller det var, og
+    // uansett om det var en bust eller ikke - bust-kast med value=0 legges også i
+    // dartHistory, se confirmThrow). Bygger opp igjen throw1/throw2/throw3-state ved å
+    // lete gjennom resten av dartHistory etter spillerens tidligere kast i samme runde.
     fun undoLastThrow() {
         if (dartHistory.isEmpty()) return
 
@@ -656,11 +749,18 @@ fun GameScreen(
             )
         }
 
+        // Gjenoppbygger throw1/throw2/throw3-visningen ut fra hvor i runden det angrede
+        // kastet var. Hvis det var kast 1, var det ingen tidligere kast i runden å vise -
+        // vi hopper rett tilbake til currentThrow = 1. Var det kast 2 eller 3, må vi finne
+        // spillerens forrige kast(ene) i samme runde fra det som er igjen i dartHistory.
         when (lastDart.throwNumber) {
             1 -> {
                 throw1 = null
                 throw1WasDouble = false
 
+                // Kast 1 var starten på runden - hvis motstanderen har kastet etter dette
+                // (currentPlayer er ikke lenger lastDart sin spiller), må vi bytte tilbake
+                // til denne spilleren og gå én runde tilbake
                 if (currentPlayer != lastDart.playerId) {
                     currentPlayer = lastDart.playerId
                     overallRound = maxOf(1, overallRound - 1)
@@ -671,6 +771,8 @@ fun GameScreen(
                 throw2 = null
                 throw2WasDouble = false
 
+                // Finn spillerens kast 1 i samme runde (siste treff med throwNumber==1
+                // for denne spilleren i det som er igjen av historikken) og gjenopprett det
                 val previousThrow1 = dartHistory.lastOrNull {
                     it.playerId == lastDart.playerId && it.throwNumber == 1
                 }
@@ -688,6 +790,7 @@ fun GameScreen(
                 throw3 = null
                 throw3WasDouble = false
 
+                // Samme prinsipp som over, men må gjenopprette både kast 1 og kast 2
                 val previousThrows = dartHistory.filter { it.playerId == lastDart.playerId }
                 val previousThrow1 = previousThrows.lastOrNull { it.throwNumber == 1 }
                 val previousThrow2 = previousThrows.lastOrNull { it.throwNumber == 2 }
@@ -708,6 +811,9 @@ fun GameScreen(
             }
         }
 
+        // Var det angrede kastet det tredje (siste) i runden, må vi også rulle tilbake
+        // roundsPlayed/lastThrow/roundHistory til slik det var FØR den runden - da må vi
+        // se på runden før den igjen (takeLast(3) på det som er igjen i historikken)
         if (lastDart.throwNumber == 3) {
             val previousRoundTotal = dartHistory
                 .filter { it.playerId == lastDart.playerId }
@@ -737,6 +843,8 @@ fun GameScreen(
         multiplier = 1
     }
 
+    // Bekreftelsesdialog når brukeren trykker tilbake-pilen midt i en kamp - kampen
+    // lagres ikke hvis de bekrefter exit
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -776,6 +884,8 @@ fun GameScreen(
         )
     }
 
+    // Vises når confirmThrow() oppdaget en bust (se checkBust/confirmThrow). bustMessage
+    // forteller hvilken av de tre bust-reglene som ble brutt.
     if (showBustDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -803,6 +913,9 @@ fun GameScreen(
         )
     }
 
+    // Vises når en spiller vinner (score nøyaktig 0 med gyldig checkout). Har ingen
+    // "dismiss" (onDismissRequest er tom) - spilleren MÅ velge Main Menu eller Rematch,
+    // det finnes ingen vei tilbake til selve spillet herfra.
     if (showWinDialog && winner != null) {
         AlertDialog(
             onDismissRequest = { },
@@ -902,6 +1015,9 @@ fun GameScreen(
                                         )
                                     }
                                 }
+                                // main_menu blir ny bunn i back-stacken (popUpTo inclusive) -
+                                // "tilbake" fra hovedmenyen skal aldri kunne havne tilbake i
+                                // den ferdigspilte kampen
                                 navController.navigate("main_menu") {
                                     popUpTo("main_menu") { inclusive = true }
                                 }
@@ -913,6 +1029,9 @@ fun GameScreen(
                         ) {
                             Text("Main Menu")
                         }
+                        // "Rematch"-knappen: lagrer kampen (samme som over), men i stedet for
+                        // å navigere bort nullstiller den all spill-state lokalt slik at en ny
+                        // kamp starter med de samme to spillerne uten å forlate skjermen
                         Button(
                             onClick = {
                                 scope.launch {
@@ -953,6 +1072,8 @@ fun GameScreen(
                                             player2Stats = player2Stats
                                         )
 
+                                        // Bytt hvem som starter neste kamp, som i en vanlig
+                                        // darts-revansje (taperen/den som ikke startet forrige gang kaster først)
                                         firstPlayer = if (firstPlayer == 1) 2 else 1
                                         currentPlayer = firstPlayer
 
@@ -991,6 +1112,11 @@ fun GameScreen(
         )
     }
 
+    // Selve spillebrettet. BoxWithConstraints gir oss faktisk tilgjengelig plass
+    // (maxWidth/maxHeight) etter at f.eks. statusbar/navigasjon er trukket fra, som brukes
+    // til å regne ut størrelser proporsjonalt med skjermen (bedre tilpasning enn faste dp-verdier
+    // på tvers av forskjellige telefoner). Disse variablene skygger de likelydende fra
+    // lenger oppe i funksjonen.
     BoxWithConstraints {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
@@ -1088,6 +1214,9 @@ fun GameScreen(
                 )
             }
 
+            // Viser tallpad-inputet live etter hvert som brukeren taster, med multiplikatoren
+            // ("× 2"/"× 3") lagt til hvis Double/Triple er valgt. "..." vises som placeholder
+            // når feltet er tomt.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1119,6 +1248,8 @@ fun GameScreen(
                     )
             }
 
+            // Undo / Double / Triple-raden. Double og Triple er "toggle"-knapper (trykk igjen
+            // for å slå av) som styrer multiplier-verdien som currentInputScore ganges med.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1222,6 +1353,10 @@ fun GameScreen(
                 }
             }
 
+            // Runder kun av de ytre hjørnene til talltastaturet (venstre knapp i raden får
+            // rundet venstre hjørne, høyre knapp får rundet høyre hjørne, midtre knapp
+            // forblir firkantet) slik at hele tastaturet ser ut som én sammenhengende,
+            // avrundet blokk selv om den består av mange enkeltknapper med 1dp mellomrom.
             fun getCornerShape(position: Int, totalInRow: Int, includeBottom: Boolean = false): RoundedCornerShape {
                 return when (position) {
                     0 -> RoundedCornerShape(
@@ -1343,6 +1478,10 @@ fun GameScreen(
                         shape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp)
                     )
 
+                    // Bekreft-knappen ("✓"/"✗"): grønn og aktiv når inputet er tomt (ingenting
+                    // å bekrefte enda) eller gyldig (0-60), rød når spilleren har tastet inn
+                    // noe som er for høyt til å være et lovlig enkeltkast - gir umiddelbar
+                    // visuell tilbakemelding før de i det hele tatt trykker
                     val confirmInteraction = remember { MutableInteractionSource() }
                     val isConfirmPressed by confirmInteraction.collectIsPressedAsState()
 
@@ -1380,6 +1519,9 @@ fun GameScreen(
     }
 }
 
+// Statuskortet for én spiller (navn, score, siste kast, checkout-forslag, snitt/runde/darts).
+// isActive styrer highlighten (glow-ramme + lysere gradient) som viser hvem sin tur det er.
+// currentRoundTotal er deklarert men brukes ikke i selve visningen her.
 @Composable
 fun PlayerCard(
     player: Player,
@@ -1532,6 +1674,9 @@ fun PlayerCard(
     }
 }
 
+// Viser ett av de tre kastene i inneværende runde ("THROW 1: 60" osv). Er ikke faktisk
+// klikkbar (onClick er tom) - dette er kun en visningsboks, ikke et input-element.
+// isActive markerer hvilket av de tre kastene som er "på tur" med en glow-kant.
 @Composable
 fun ThrowButton(
     label: String,
@@ -1569,6 +1714,8 @@ fun ThrowButton(
     }
 }
 
+// Gjenbrukbar tastaturknapp for tallpaden (0-9). shape sendes inn utenfra via
+// getCornerShape() slik at kun de ytre knappene i rutenettet får avrundede hjørner.
 @Composable
 fun NumberButton(
     number: Int,

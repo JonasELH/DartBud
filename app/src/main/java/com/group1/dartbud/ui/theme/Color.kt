@@ -2,6 +2,9 @@ package com.group1.dartbud.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+// Rå fargeverdier for lyst og mørkt tema (DartBud-paletten: lilla/rosa/magenta).
+// Brukes kun her og bygges sammen til Material3-fargeskjemaer i Theme.kt.
+
 // Light theme colors
 val LightPrimary = Color(0xFF9C27B0)
 val LightSecondary = Color(0xFFE91E63)

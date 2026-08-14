@@ -13,16 +13,30 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel som holder styr på spillerprofiler for UI-laget: alle spillere,
+ * profiler tilknyttet en innlogget Google-bruker, og rene lokale profiler.
+ *
+ * Kombinerer Room (lokal lagring, kilde til sannhet for UI) med Firestore
+ * (sky-synkronisering for Google-innloggede brukere). Mønsteret som går igjen:
+ * skriv til Room først, og hvis brukeren er innlogget, speil endringen til Firestore.
+ */
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: PlayerRepository
     private val firestoreRepository = FirestoreRepository()
 
+    // Alle spillere i Room. Brukes typisk der man trenger hele listen uavhengig
+    // av innloggingsstatus.
     private val _players = MutableStateFlow<List<PlayerEntity>>(emptyList())
     val players: StateFlow<List<PlayerEntity>> = _players.asStateFlow()
 
+    // Profiler tilknyttet den innloggede Google-brukeren (primærprofil + evt. underprofiler).
+    // Tom liste når ingen er logget inn.
     private val _userProfiles = MutableStateFlow<List<PlayerEntity>>(emptyList())
     val userProfiles: StateFlow<List<PlayerEntity>> = _userProfiles.asStateFlow()
 
+    // Lokale gjesteprofiler (ikke knyttet til noen Google-konto). Vises uavhengig
+    // av om noen er innlogget eller ikke.
     private val _localProfiles = MutableStateFlow<List<PlayerEntity>>(emptyList())
     val localProfiles: StateFlow<List<PlayerEntity>> = _localProfiles.asStateFlow()
 
@@ -32,6 +46,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         val playerDao = DartBudDatabase.getDatabase(application).playerDao()
         repository = PlayerRepository(playerDao)
 
+        // Følger Room-tabellen kontinuerlig og speiler den til _players,
+        // slik at UI (som observerer players) alltid har ferske data.
         viewModelScope.launch {
             repository.allPlayers.collect { playerList ->
                 _players.value = playerList
@@ -41,6 +57,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     // ===== GOOGLE SIGN-IN MED FIRESTORE SYNKRONISERING =====
 
+    // Kalles når innloggingsstatus endres (login/logout). Styrer hvilke profil-
+    // Flows som samles inn, og trigger synkronisering fra Firestore ved innlogging.
     fun setGoogleUserId(googleUserId: String?) {
         _currentGoogleUserId.value = googleUserId
 
@@ -72,6 +90,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // Henter profiler fra Firestore og "importerer" de som mangler lokalt i Room.
+    // Ettpartsvis synk (Firestore -> Room); feil ignoreres stille via Result.onSuccess
+    // (onFailure-grenen håndteres ikke, så en feilet sync bare gir tomt resultat).
     private fun syncFromFirestore(userId: String) {
         viewModelScope.launch {
             val result = firestoreRepository.getUserProfiles(userId)
@@ -98,6 +119,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // Oppretter hovedprofilen for en Google-bruker ved første innlogging.
+    // Sjekker hasPrimaryProfile først slik at dette er trygt å kalle flere ganger
+    // (f.eks. ved hver innlogging) uten å lage duplikate primærprofiler.
     fun createPrimaryProfileForGoogleUser(
         googleUserId: String,
         displayName: String,
@@ -131,6 +155,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         return repository.hasPrimaryProfile(googleUserId)
     }
 
+    // Legger til en underprofil (f.eks. familiemedlem) under en innlogget Google-bruker.
+    // Lagres i Room først, deretter i Firestore med den nye Room-ID-en som profileId.
     fun addUserProfile(googleUserId: String, username: String, email: String) {
         viewModelScope.launch {
             // Lagre i Room
@@ -155,6 +181,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    // Oppretter en ren lokal gjesteprofil (ingen Google-tilknytning), derfor
+    // ingen Firestore-skriving her.
     fun addLocalPlayer(username: String) {
         viewModelScope.launch {
             repository.insertPlayer(
@@ -169,6 +197,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     // ===== GENERELLE METODER =====
 
+    // Generisk "legg til spiller"-metode, brukt der man ikke skiller mellom
+    // lokal/Google-profil. Sjekker at brukernavnet ikke finnes fra før.
     fun addPlayer(username: String) {
         viewModelScope.launch {
             val existing = repository.getPlayerByUsername(username)

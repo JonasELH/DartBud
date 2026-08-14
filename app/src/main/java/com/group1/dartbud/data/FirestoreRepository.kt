@@ -7,6 +7,10 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+// Firestore-representasjonen av en spillerprofil. Lagres under users/{userId}/profiles/{profileId}.
+// Speiler PlayerEntity, men er en egen modell fordi Firestore trenger et objekt med
+// tomme default-verdier (for doc.toObject) og fordi feltene som synkroniseres til skyen
+// ikke nødvendigvis er identiske med Room-kolonnene.
 data class FirestorePlayerProfile(
     val profileId: String = "",
     val username: String = "",
@@ -16,6 +20,10 @@ data class FirestorePlayerProfile(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+// Firestore-representasjonen av et ferdigspilt spill, lagret under
+// users/{userId}/games/{gameId}. Denormalisert (inkluderer navn, ikke bare ID-er,
+// og begge spilleres statistikk flatt på selve dokumentet) slik at spillhistorikk
+// kan vises uten ekstra oppslag mot spillerdokumenter.
 data class FirestoreGame(
     val gameId: String = "",
     val player1Id: String = "",
@@ -39,11 +47,21 @@ data class FirestoreGame(
     val playedAt: Long = System.currentTimeMillis()
 )
 
+/**
+ * Håndterer all lesing/skriving mot Firestore (skylagring), organisert per bruker
+ * under users/{userId}/... Dette er sky-motstykket til Room-lagene (Player/GameRepository)
+ * og brukes kun for innloggede Google-brukere.
+ *
+ * Alle suspend-funksjoner returnerer [Result] i stedet for å kaste unntak, slik at
+ * kalleren (ViewModel) kan bruke onSuccess/onFailure uten try/catch rundt hvert kall.
+ */
 class FirestoreRepository {
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     // SPILLERE
 
+    // Lagrer (eller overskriver) én profil under brukerens profils-subcollection.
+    // .set() erstatter hele dokumentet, så dette dekker både "opprett ny" og "oppdater alt".
     suspend fun saveUserProfile(
         userId: String,
         profile: FirestorePlayerProfile
@@ -62,6 +80,8 @@ class FirestoreRepository {
         }
     }
 
+    // Henter alle profiler for en bruker i ett engangs-kall (ikke live). Brukes til
+    // engangs-synkronisering fra Firestore til Room (se PlayerViewModel.syncFromFirestore).
     suspend fun getUserProfiles(userId: String): Result<List<FirestorePlayerProfile>> {
         return try {
             val snapshot = firestore
@@ -71,6 +91,8 @@ class FirestoreRepository {
                 .get()
                 .await()
 
+            // mapNotNull hopper stille over dokumenter som ikke lar seg deserialisere
+            // til FirestorePlayerProfile, i stedet for å kaste feil for hele listen.
             val profiles = snapshot.documents.mapNotNull { doc ->
                 doc.toObject(FirestorePlayerProfile::class.java)
             }
@@ -80,6 +102,8 @@ class FirestoreRepository {
         }
     }
 
+    // Oppdaterer kun brukernavn-feltet (.update med ett felt), i motsetning til
+    // saveUserProfile som skriver over hele dokumentet.
     suspend fun updateUserProfile(
         userId: String,
         profileId: String,
@@ -119,6 +143,8 @@ class FirestoreRepository {
 
     // SPILL
 
+    // Lagrer et ferdigspilt spill i skyen for den innloggede brukeren, kalt fra
+    // GameViewModel.saveGame etter at spillet er lagret lokalt i Room.
     suspend fun saveGame(
         userId: String,
         game: FirestoreGame
@@ -137,6 +163,7 @@ class FirestoreRepository {
         }
     }
 
+    // Henter brukerens spillhistorikk fra skyen, nyeste først.
     suspend fun getUserGames(userId: String): Result<List<FirestoreGame>> {
         return try {
             val snapshot = firestore
@@ -156,6 +183,10 @@ class FirestoreRepository {
         }
     }
 
+    // Sletter ALT en bruker har i Firestore (profiler, spill, og brukerdokumentet selv).
+    // Brukes typisk ved kontosletting. Firestore har ikke rekursiv sletting av
+    // subcollections innebygd, så hvert dokument i profiles/games må hentes og
+    // slettes enkeltvis før foreldredokumentet kan slettes.
     suspend fun deleteAllUserData(userId: String): Result<Unit> {
         return try {
             val profilesSnapshot = firestore
@@ -184,12 +215,18 @@ class FirestoreRepository {
 
     // REAL-TIME LISTENERS (valgfritt)
 
+    // callbackFlow bygger en Flow rundt Firestores callback-baserte snapshot-listener,
+    // slik at man kan collecte live-oppdateringer med vanlig Flow-syntaks. Listeneren
+    // sender ny liste hver gang dataene endres i skyen (i motsetning til getUserProfiles
+    // som bare henter én gang). awaitClose fjerner listeneren når Flow-collectoren
+    // avsluttes, så vi unngår at den fortsetter å lytte etter at ingen bruker den lenger.
     fun getUserProfilesFlow(userId: String): Flow<List<FirestorePlayerProfile>> = callbackFlow {
         val registration = firestore
             .collection("users")
             .document(userId)
             .collection("profiles")
             .addSnapshotListener { snapshot, error ->
+                // Feil ved lytting ignoreres stille (ingen verdi sendes videre denne gangen).
                 if (error != null) return@addSnapshotListener
 
                 val profiles = snapshot?.documents?.mapNotNull { doc ->
