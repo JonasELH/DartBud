@@ -12,3 +12,22 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Kotlin-kompilatorens sesjonsfiler. Skrives ved hvert bygg, er tomme, og gir
+# bare konfliktstoy - de sa ut som endringer i git etter hver kjoring.
+.kotlin/
+
+# Byggeutdata for release. app/build er allerede dekket av app/.gitignore, men
+# signerte bunter og pakker havner utenfor den og er store binaerfiler som ikke
+# hoerer hjemme i historikken (den forrige AAB-en var pa 17 MB).
+/app/release/
+*.aab
+*.apk
+
+# Signeringsnokler. Prosjektets keystore ligger bevisst utenfor repoet, og dette
+# er sikkerhetsnettet: repoet er offentlig, og en nokkel som forst er pushet ma
+# regnes som kompromittert - da hjelper det ikke a slette den etterpa.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
