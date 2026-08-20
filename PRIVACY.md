@@ -4,8 +4,12 @@
 
 ## Hvem er ansvarlig?
 
-DartBud er utviklet av Kenneth Andreas Hansen. Spørsmål om personvern kan rettes til:
+Kenneth Andreas Hansen er behandlingsansvarlig for personopplysningene DartBud behandler. Spørsmål om personvern kan rettes til:
 📧 kenneth@lilitlabs.com
+
+## Hvem har laget appen
+
+DartBud er utviklet av Kenneth Andreas Hansen, Jonas El H'Babi Helling, Kristian Martin Tvenning og Lucas Leon Svaet Holter.
 
 ---
 

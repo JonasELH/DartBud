@@ -30,16 +30,7 @@ The app is intended for amateurs who want to play recreationally, whether it is 
 | Navn | Rolle |
 |------|-------|
 | Kenneth Andreas Hansen | Software Architect |
-| Jonas El Helling | Project Manager |
-| Kristian Martin Tvenning | UX/UI |
-| Lucas Leon Svaet Holter | Database |
-
-## Contributors
-
-| Navn | Rolle |
-|------|-------|
-| Kenneth Andreas Hansen | Software Architect |
-| Jonas El Helling | Project Manager |
+| Jonas El H'Babi Helling | Project Manager |
 | Kristian Martin Tvenning | UX/UI |
 | Lucas Leon Svaet Holter | Database |
 
