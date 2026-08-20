@@ -94,13 +94,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 repository.insertStats(player2StatsWithGameId)
 
                 // Hvis bruker er innlogget, lagre også i Firestore
-                currentGoogleUserId?.let { userId ->
+                val userId = currentGoogleUserId
+                if (userId == null) {
+                    // Gjestemodus: dette er forventet, kampen finnes kun lokalt
+                    Log.i("GameViewModel", "Ingen innlogget bruker - kampen lagres kun lokalt")
+                } else {
                     // Hent spillere
                     val player1 = playerRepository.getPlayerById(player1Id)
                     val player2 = playerRepository.getPlayerById(player2Id)
                     val winner = playerRepository.getPlayerById(winnerId)
 
-                    if (player1 != null && player2 != null && winner != null) {
+                    if (player1 == null || player2 == null || winner == null) {
+                        Log.w(
+                            "GameViewModel",
+                            "Fant ikke spillerne i Room (p1=$player1Id p2=$player2Id vinner=$winnerId) " +
+                                "- hopper over Firestore"
+                        )
+                    } else {
                         val firestoreGame = FirestoreGame(
                             gameId = insertedGameId.toString(),
                             player1Id = player1Id.toString(),
@@ -124,7 +134,22 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             playedAt = System.currentTimeMillis()
                         )
 
+                        // Resultatet ble tidligere kastet. Feilet skrivingen - avviste
+                        // sikkerhetsregler, manglende nett - skjedde det helt stille,
+                        // og skysynkronisering kunne vært død i månedsvis uten at
+                        // noen merket det. Nå logges utfallet begge veier.
                         firestoreRepository.saveGame(userId, firestoreGame)
+                            .onSuccess {
+                                Log.i(
+                                    "GameViewModel",
+                                    "Kamp $insertedGameId lagret i Firestore for bruker $userId"
+                                )
+                            }
+                            .onFailure { e ->
+                                Log.e("GameViewModel", "Firestore-lagring feilet", e)
+                                _saveGameError.value =
+                                    "Kampen ble lagret lokalt, men ikke i skyen: ${e.message}"
+                            }
                     }
                 }
             } catch (e: Exception) {
