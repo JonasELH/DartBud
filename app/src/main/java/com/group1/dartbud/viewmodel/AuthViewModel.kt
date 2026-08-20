@@ -11,6 +11,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.group1.dartbud.R
+import com.group1.dartbud.data.DartBudDatabase
 import com.group1.dartbud.data.FirestoreRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,8 +60,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     // innloggingen. Brukes både ved innlogging og for å logge ut av Google-
     // sesjonen (signOut/deleteAccount).
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
+        // default_web_client_id genereres automatisk av google-services-plugin ut fra
+        // google-services.json. Å hente den derfra i stedet for å hardkode strengen
+        // gjør at klient-IDen ikke kan komme ut av synk med Firebase-prosjektet.
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("1047061559331-kfn5bcu39rg20dpjphgnk996bm9t335p.apps.googleusercontent.com")
+            .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
 
@@ -119,6 +124,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _deleteAccountState.value = DeleteAccountState.Loading
             try {
                 firestoreRepository.deleteAllUserData(user.uid).getOrThrow()
+
+                // Slett også de lokale dataene. Uten dette lå brukerens profiler og
+                // kamper fortsatt igjen i Room på enheten etter "slett konto", stikk i
+                // strid med det personvernerklæringen lover. Kampene må slettes før
+                // profilene, siden oppslaget går via players.googleUserId.
+                val database = DartBudDatabase.getDatabase(getApplication())
+                database.gameDao().deleteGamesByGoogleUserId(user.uid)
+                database.playerDao().deletePlayersByGoogleUserId(user.uid)
+
                 user.delete().await()
                 getGoogleSignInClient(context).signOut()
                 _currentUser.value = null

@@ -31,7 +31,6 @@ import com.group1.dartbud.viewmodel.AuthState
 import com.group1.dartbud.viewmodel.AuthViewModel
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.utils.NetworkUtils
-import kotlinx.coroutines.launch
 
 // Innloggingsskjermen: brukeren kan enten logge inn med Google (krever internett) eller
 // fortsette som gjest (kun lokale profiler, ingen sky-synkronisering).
@@ -43,7 +42,6 @@ fun LoginScreen(
     gameViewModel: GameViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val currentUser by authViewModel.currentUser.collectAsState()
     val authState by authViewModel.authState.collectAsState()
 
@@ -73,26 +71,25 @@ fun LoginScreen(
     // spillerprofil for dem, slik at de har minst én profil å velge fra i spillet.
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
-            scope.launch {
-                val hasPrimary = playerViewModel.hasPrimaryProfile(user.uid)
+            // Alle tre kallene under er "fire and forget" og kjører videre på
+            // ViewModelenes eget viewModelScope. De ble tidligere pakket inn i en
+            // rememberCoroutineScope().launch { } sammen med navigasjonen - det scopet
+            // dør i det login-ruten poppes to linjer lenger ned, så opprettelsen av
+            // primærprofilen kunne bli avbrutt midt i.
+            playerViewModel.createPrimaryProfileForGoogleUser(
+                googleUserId = user.uid,
+                displayName = user.displayName ?: "Player",
+                email = user.email ?: "",
+                photoUrl = user.photoUrl?.toString()
+            )
 
-                if (!hasPrimary) {
-                    playerViewModel.createPrimaryProfileForGoogleUser(
-                        googleUserId = user.uid,
-                        displayName = user.displayName ?: "Player",
-                        email = user.email ?: "",
-                        photoUrl = user.photoUrl?.toString()
-                    )
-                }
+            playerViewModel.setGoogleUserId(user.uid)
+            gameViewModel.setGoogleUserId(user.uid)
 
-                playerViewModel.setGoogleUserId(user.uid)
-                gameViewModel.setGoogleUserId(user.uid)
-
-                // "login" fjernes fra back-stacken slik at "tilbake" fra hovedmenyen
-                // ikke tar brukeren tilbake til innloggingsskjermen
-                navController.navigate("main_menu") {
-                    popUpTo("login") { inclusive = true }
-                }
+            // "login" fjernes fra back-stacken slik at "tilbake" fra hovedmenyen
+            // ikke tar brukeren tilbake til innloggingsskjermen
+            navController.navigate("main_menu") {
+                popUpTo("login") { inclusive = true }
             }
         }
     }
@@ -258,6 +255,11 @@ fun LoginScreen(
             OutlinedButton(
                 onClick = {
                     // Guest mode krever IKKE internett! ✅
+                    // Sett eksplisitt "ingen innlogget bruker", slik at de lokale
+                    // gjesteprofilene lastes inn med en gang i stedet for først når
+                    // brukeren tilfeldigvis åpner en skjerm som setter det selv.
+                    playerViewModel.setGoogleUserId(null)
+                    gameViewModel.setGoogleUserId(null)
                     navController.navigate("main_menu") {
                         popUpTo("login") { inclusive = true }
                     }

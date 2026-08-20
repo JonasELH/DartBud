@@ -20,6 +20,14 @@ class PlayerRepository(private val playerDao: PlayerDao) {
         return playerDao.getPlayerByUsername(username)
     }
 
+    suspend fun getPlayerByUsernameForGoogleUser(username: String, googleUserId: String): PlayerEntity? {
+        return playerDao.getPlayerByUsernameForGoogleUser(username, googleUserId)
+    }
+
+    suspend fun getLocalPlayerByUsername(username: String): PlayerEntity? {
+        return playerDao.getLocalPlayerByUsername(username)
+    }
+
     suspend fun insertPlayer(player: PlayerEntity): Long {
         return playerDao.insertPlayer(player)
     }

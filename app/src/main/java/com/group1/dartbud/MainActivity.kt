@@ -75,10 +75,18 @@ fun DartBudApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             // Innloggingsskjerm (Google Sign-In). Første skjerm brukeren ser.
+            // NB: alle ViewModelene må sendes eksplisitt. Utelates de, faller
+            // parameterne tilbake på viewModel(), som inne i en NavHost-rute scopes
+            // til rutens egen NavBackStackEntry - altså en ANNEN instans enn resten
+            // av appen bruker. Login-ruten poppes rett etter innlogging, så den
+            // instansen (og alt arbeid den hadde gående, som opprettelse av
+            // primærprofil) ble kansellert umiddelbart.
             composable("login") {
                 LoginScreen(
                     navController = navController,
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    playerViewModel = playerViewModel,
+                    gameViewModel = gameViewModel
                 )
             }
             // Hovedmeny etter innlogging: herfra navigerer man videre til
@@ -86,7 +94,9 @@ fun DartBudApp() {
             composable("main_menu") {
                 MainMenuScreen(
                     navController = navController,
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    playerViewModel = playerViewModel,
+                    gameViewModel = gameViewModel
                 )
             }
             // Regler for 501-spillet. Egne enter/exit-transisjoner (glid inn/ut
@@ -128,7 +138,8 @@ fun DartBudApp() {
             ) {
                 GameSettingsScreen(
                     navController = navController,
-                    viewModel = playerViewModel
+                    viewModel = playerViewModel,
+                    authViewModel = authViewModel
                 )
             }
 
@@ -174,7 +185,8 @@ fun DartBudApp() {
             ) {
                 ManagePlayersScreen(
                     navController = navController,
-                    viewModel = playerViewModel
+                    viewModel = playerViewModel,
+                    authViewModel = authViewModel
                 )
             }
 

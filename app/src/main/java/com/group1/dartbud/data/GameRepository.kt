@@ -31,6 +31,10 @@ class GameRepository(
         gameDao.deleteGame(game)
     }
 
+    suspend fun deleteGamesByPlayer(playerId: Int) {
+        gameDao.deleteGamesByPlayer(playerId)
+    }
+
     // Stats methods
     suspend fun getStatsByGame(gameId: Int): List<GameStatsEntity> {
         return gameStatsDao.getStatsByGame(gameId)

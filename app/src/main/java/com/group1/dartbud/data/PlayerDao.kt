@@ -19,6 +19,18 @@ interface PlayerDao {
     @Query("SELECT * FROM players WHERE username = :username LIMIT 1")
     suspend fun getPlayerByUsername(username: String): PlayerEntity?
 
+    // Som over, men begrenset til én bestemt Google-brukers profiler. Brukes ved
+    // synkronisering fra Firestore, der et navnetreff på en urelatert lokal
+    // gjesteprofil ikke skal telle som "profilen finnes allerede".
+    @Query("SELECT * FROM players WHERE username = :username AND googleUserId = :googleUserId LIMIT 1")
+    suspend fun getPlayerByUsernameForGoogleUser(username: String, googleUserId: String): PlayerEntity?
+
+    // Lokal gjesteprofil med et gitt navn (googleUserId IS NULL). Brukes til å hindre
+    // duplikate gjestenavn, som ellers gjør at kampen lagres på feil spiller siden
+    // spillere slås opp på navn når en kamp skal lagres.
+    @Query("SELECT * FROM players WHERE username = :username AND googleUserId IS NULL LIMIT 1")
+    suspend fun getLocalPlayerByUsername(username: String): PlayerEntity?
+
     // IGNORE ved konflikt (f.eks. dobbel innsetting av samme profil under sync)
     // gjør at eksisterende rad beholdes i stedet for å kaste feil eller overskrive.
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -32,6 +44,11 @@ interface PlayerDao {
 
     @Query("DELETE FROM players WHERE playerId = :id")
     suspend fun deletePlayerById(id: Int)
+
+    // Alle profiler tilknyttet en Google-konto. Brukes ved kontosletting, slik at
+    // dataene faktisk forsvinner også lokalt - ikke bare i Firestore.
+    @Query("DELETE FROM players WHERE googleUserId = :googleUserId")
+    suspend fun deletePlayersByGoogleUserId(googleUserId: String)
 
     // NYE QUERIES for Google Sign-In
 

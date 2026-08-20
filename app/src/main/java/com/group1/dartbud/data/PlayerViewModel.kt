@@ -6,8 +6,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.group1.dartbud.data.DartBudDatabase
+import com.group1.dartbud.data.GameRepository
 import com.group1.dartbud.data.PlayerEntity
 import com.group1.dartbud.data.PlayerRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
  */
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: PlayerRepository
+    private val gameRepository: GameRepository
     private val firestoreRepository = FirestoreRepository()
 
     // Alle spillere i Room. Brukes typisk der man trenger hele listen uavhengig
@@ -42,9 +45,19 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _currentGoogleUserId = MutableStateFlow<String?>(null)
 
+    // Jobbene som samler inn profil-Flows. Holdes som felt slik at et nytt kall til
+    // setGoogleUserId kan kansellere de forrige. Uten dette startet hvert kall enda et
+    // sett collectors som aldri ble stoppet - og setGoogleUserId kalles fra en
+    // LaunchedEffect i både GameSettingsScreen og ManagePlayersScreen, altså hver gang
+    // brukeren åpner en av dem.
+    private var userProfilesJob: Job? = null
+    private var localProfilesJob: Job? = null
+    private var syncJob: Job? = null
+
     init {
-        val playerDao = DartBudDatabase.getDatabase(application).playerDao()
-        repository = PlayerRepository(playerDao)
+        val database = DartBudDatabase.getDatabase(application)
+        repository = PlayerRepository(database.playerDao())
+        gameRepository = GameRepository(database.gameDao(), database.gameStatsDao())
 
         // Følger Room-tabellen kontinuerlig og speiler den til _players,
         // slik at UI (som observerer players) alltid har ferske data.
@@ -60,33 +73,33 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     // Kalles når innloggingsstatus endres (login/logout). Styrer hvilke profil-
     // Flows som samles inn, og trigger synkronisering fra Firestore ved innlogging.
     fun setGoogleUserId(googleUserId: String?) {
+        // Ingen endring - ikke start nye collectors eller en ny Firestore-synk unødig.
+        if (_currentGoogleUserId.value == googleUserId && localProfilesJob != null) return
+
         _currentGoogleUserId.value = googleUserId
 
+        // Stopp innsamlingen fra forrige innloggingstilstand før vi starter ny
+        userProfilesJob?.cancel()
+        localProfilesJob?.cancel()
+        syncJob?.cancel()
+
+        // Lokale gjesteprofiler vises uansett om noen er innlogget eller ikke
+        localProfilesJob = viewModelScope.launch {
+            repository.getLocalProfiles().collect { profiles ->
+                _localProfiles.value = profiles
+            }
+        }
+
         if (googleUserId != null) {
-            // Synkroniser fra Firestore til Room
             syncFromFirestore(googleUserId)
 
-            // Last inn brukerens profiler
-            viewModelScope.launch {
+            userProfilesJob = viewModelScope.launch {
                 repository.getUserProfiles(googleUserId).collect { profiles ->
                     _userProfiles.value = profiles
                 }
             }
-
-            // Last inn lokale profiler
-            viewModelScope.launch {
-                repository.getLocalProfiles().collect { profiles ->
-                    _localProfiles.value = profiles
-                }
-            }
         } else {
-            // Hvis utlogget, vis bare lokale profiler
             _userProfiles.value = emptyList()
-            viewModelScope.launch {
-                repository.getLocalProfiles().collect { profiles ->
-                    _localProfiles.value = profiles
-                }
-            }
         }
     }
 
@@ -94,12 +107,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     // Ettpartsvis synk (Firestore -> Room); feil ignoreres stille via Result.onSuccess
     // (onFailure-grenen håndteres ikke, så en feilet sync bare gir tomt resultat).
     private fun syncFromFirestore(userId: String) {
-        viewModelScope.launch {
+        syncJob = viewModelScope.launch {
             val result = firestoreRepository.getUserProfiles(userId)
             result.onSuccess { firestoreProfiles ->
                 // Oppdater Room med data fra Firestore
                 firestoreProfiles.forEach { fsProfile ->
-                    val existingPlayer = repository.getPlayerByUsername(fsProfile.username)
+                    // Sjekk mot brukerens EGNE profiler, ikke mot alle navn i basen.
+                    // Et treff på en lokal gjesteprofil med samme navn gjorde tidligere
+                    // at Google-profilen aldri ble opprettet lokalt.
+                    val existingPlayer = repository.getPlayerByUsernameForGoogleUser(
+                        username = fsProfile.username,
+                        googleUserId = userId
+                    )
 
                     if (existingPlayer == null) {
                         // Opprett ny spiller i Room
@@ -131,16 +150,20 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             if (!repository.hasPrimaryProfile(googleUserId)) {
                 // Lagre i Room
-                repository.createPrimaryProfileForGoogleUser(
+                val insertedId = repository.createPrimaryProfileForGoogleUser(
                     googleUserId = googleUserId,
                     displayName = displayName,
                     email = email,
                     photoUrl = photoUrl
                 )
 
-                // Lagre i Firestore
+                // Lagre i Firestore. profileId må være Room-IDen, ikke googleUserId:
+                // updateUserProfile/deleteUserProfile slår opp dokumentet på
+                // player.playerId, så en primærprofil lagret under googleUserId ble
+                // aldri funnet igjen - endring og sletting av den traff et dokument
+                // som ikke fantes, og feilen ble svelget.
                 val firestoreProfile = FirestorePlayerProfile(
-                    profileId = googleUserId, // Bruker googleUserId som profileId for primærprofil
+                    profileId = insertedId.toString(),
                     username = displayName,
                     email = email,
                     isPrimaryProfile = true,
@@ -185,6 +208,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     // ingen Firestore-skriving her.
     fun addLocalPlayer(username: String) {
         viewModelScope.launch {
+            // Duplikate gjestenavn er ikke bare kosmetisk: når en ferdigspilt kamp skal
+            // lagres slås spillerne opp på navn, så to profiler med samme navn ville
+            // gitt statistikken til feil spiller.
+            if (repository.getLocalPlayerByUsername(username) != null) return@launch
+
             repository.insertPlayer(
                 PlayerEntity(
                     username = username,
@@ -227,6 +255,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deletePlayer(player: PlayerEntity) {
         viewModelScope.launch {
+            // Kampene må ryddes eksplisitt: game_stats har CASCADE mot players, men
+            // games har ingen foreign key. Uten dette forsvant statistikken mens selve
+            // kampene ble liggende igjen og pekte på en spiller som ikke fantes lenger.
+            gameRepository.deleteGamesByPlayer(player.playerId)
             repository.deletePlayer(player)
 
             // Hvis det er en Google-profil, slett også fra Firestore

@@ -27,4 +27,19 @@ interface GameDao {
 
     @Delete
     suspend fun deleteGame(game: GameEntity)
+
+    // games har ingen foreign key mot players (i motsetning til game_stats, som har
+    // CASCADE). Slettes en spiller uten at kampene ryddes med, blir kampene liggende
+    // igjen med spiller-IDer som ikke finnes - historikken viser dem da uten navn.
+    // Derfor slettes kampene eksplisitt her.
+    @Query("DELETE FROM games WHERE player1Id = :playerId OR player2Id = :playerId")
+    suspend fun deleteGamesByPlayer(playerId: Int)
+
+    // Alle kamper som involverer en gitt Google-brukers profiler. Brukes ved kontosletting.
+    @Query(
+        "DELETE FROM games WHERE " +
+            "player1Id IN (SELECT playerId FROM players WHERE googleUserId = :googleUserId) OR " +
+            "player2Id IN (SELECT playerId FROM players WHERE googleUserId = :googleUserId)"
+    )
+    suspend fun deleteGamesByGoogleUserId(googleUserId: String)
 }

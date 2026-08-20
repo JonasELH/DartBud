@@ -45,25 +45,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Kalles ved login/logout for å styre om spillhistorikk skal synkroniseres fra Firestore.
+    // Kalles ved login/logout. Styrer om ferdigspilte kamper også speiles til Firestore.
+    //
+    // Her lå tidligere et kall til syncGamesFromFirestore(), som hentet hele
+    // spillhistorikken fra skyen og så kastet resultatet - onSuccess-blokken var tom.
+    // Det ga en Firestore-lesning ved hver innlogging uten noen effekt, og er fjernet.
+    // Historikk fra skyen vises altså ikke på tvers av enheter enda: lokal Room er
+    // kilden til sannhet for visning, mens Firestore kun er en sikkerhetskopi.
+    // En reell toveis-synk må håndtere at gameId i dag er Room sin autoinkrementerte
+    // ID, som ikke er unik på tvers av enheter.
     fun setGoogleUserId(userId: String?) {
         currentGoogleUserId = userId
-        if (userId != null) {
-            // Synkroniser spill fra Firestore
-            syncGamesFromFirestore(userId)
-        }
-    }
-
-    // NB: henter spillene fra Firestore, men gjør foreløpig ingenting med resultatet
-    // (verken vises i UI eller caches i Room) - onSuccess-blokken er tom.
-    private fun syncGamesFromFirestore(userId: String) {
-        viewModelScope.launch {
-            val result = firestoreRepository.getUserGames(userId)
-            result.onSuccess { firestoreGames ->
-                // Her kan vi vise disse spillene i UI uten å lagre i Room
-                // Eller vi kan velge å også lagre dem i Room som cache
-            }
-        }
     }
 
     // Lagrer et ferdigspilt spill: oppretter GameEntity + to GameStatsEntity-rader i Room,

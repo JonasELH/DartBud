@@ -8,8 +8,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.group1.dartbud.viewmodel.GameViewModel
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.data.GameStatsEntity
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -33,27 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.ui.platform.LocalDensity
+import com.group1.dartbud.game.GameEngine
+import com.group1.dartbud.game.GameState
+import com.group1.dartbud.game.Player
+import com.group1.dartbud.game.calculateCheckout
+import com.group1.dartbud.game.isValidThrowInput
 
-// Ett spillerobjekt i den pågående kampen. Dette er UI-state, ikke databasen -
-// permanent lagring (GameStatsEntity) skjer først når kampen er vunnet.
-data class Player(
-    val name: String,
-    var score: Int = 501,
-    var lastThrow: Int = 0,
-    var highestScore: Int = 0,
-    var average: Double = 0.0,
-    var roundsPlayed: Int = 0,
-    var dartsThrown: Int = 0,
-    var hasScored: Boolean = false // Har spilleren fått godkjent (double-in) treff enda?
-)
-
-// Én enkelt dart-kast, brukt til å bygge opp dartHistory slik at undo kan spole tilbake.
-data class DartThrow(
-    val playerId: Int,
-    val value: Int,
-    val wasDouble: Boolean,
-    val throwNumber: Int // 1, 2 eller 3 - hvilket kast i runden dette var
-)
 
 // Hjelpefunksjon for å skalere ned skriftstørrelse uten å gå over en maks-grense
 fun TextUnit.coerceAtMost(maximumValue: TextUnit): TextUnit {
@@ -94,753 +77,112 @@ fun GameScreen(
     val actionButtonFontSize = (actionButtonHeight.value * 0.26f).coerceIn(14f, 18f).sp
     val numberButtonFontSize = (numberButtonHeight.value * 0.4f).coerceIn(24f, 32f).sp
 
-    val scope = rememberCoroutineScope()
-
-    // Spillerne sin state. player1/player2 er "kilden til sannhet" for score, snitt osv,
-    // og oppdateres kun via .copy() inne i confirmThrow/undoLastThrow.
-    var player1 by remember { mutableStateOf(Player(player1Name)) }
-    var player2 by remember { mutableStateOf(Player(player2Name)) }
-    var currentPlayer by remember { mutableStateOf(1) } // 1 eller 2 - hvem sin tur er det
+    // All spillogikk (bust, double-in, turskifte, undo) ligger i GameEngine - ren Kotlin
+    // uten Compose, dekket av enhetstester i GameEngineTest. Skjermen holder bare én
+    // tilstand og sender kast inn i motoren. Reglene bodde tidligere her i UI-laget, der
+    // de var umulige å teste automatisk - og det var nettopp der bust-regelen rakk å bli
+    // ulik mellom kast 1, 2 og 3.
+    val engine = remember(doubleInEnabled, doubleOutEnabled) {
+        GameEngine(doubleInEnabled = doubleInEnabled, doubleOutEnabled = doubleOutEnabled)
+    }
+    var gameState by remember { mutableStateOf(GameState.new(player1Name, player2Name)) }
     var firstPlayer by remember { mutableStateOf(1) } // Brukes ved rematch for å bytte hvem som starter
 
-    // De tre kastene i inneværende runde. Holdes som nullable Int slik at UI-et
-    // (ThrowButton) vet om et kast enda ikke er registrert.
-    var throw1 by remember { mutableStateOf<Int?>(null) }
-    var throw2 by remember { mutableStateOf<Int?>(null) }
-    var throw3 by remember { mutableStateOf<Int?>(null) }
-    var throw1WasDouble by remember { mutableStateOf(false) }
-    var throw2WasDouble by remember { mutableStateOf(false) }
-    var throw3WasDouble by remember { mutableStateOf(false) }
-    var currentThrow by remember { mutableStateOf(1) } // Hvilket av de 3 kastene i runden vi er på nå
-    var overallRound by remember { mutableStateOf(1) } // Teller opp for hver runde (begge spillere kastet)
+    // Utpakking av tilstanden, slik at UI-koden under leser de samme navnene som før
+    val player1 = gameState.player1
+    val player2 = gameState.player2
+    val currentPlayer = gameState.currentPlayer
+    val currentThrow = gameState.currentThrow
+    val overallRound = gameState.overallRound
+    val throw1 = gameState.throw1
+    val throw2 = gameState.throw2
+    val throw3 = gameState.throw3
+    val winner = gameState.winner
+    val showWinDialog = gameState.winnerNumber != 0
 
-    // Tallpad-input: tallet brukeren har skrevet inn og hvilken multiplikator (Double/Triple) som er valgt
+    // Samme dialog brukes til bust og til "kastet ga ingen poeng enda" ved double-in,
+    // så tittelen må følge med på hvilken av de to det er.
+    val showBustDialog = gameState.message != null
+    val bustTitle = gameState.message?.title ?: ""
+    val bustMessage = gameState.message?.text ?: ""
+
+    // Tallpad-input: tallet brukeren har skrevet inn og hvilken multiplikator som er valgt
     var inputValue by remember { mutableStateOf("") }
     var multiplier by remember { mutableStateOf(1) }
-
-    var showBustDialog by remember { mutableStateOf(false) }
-    var bustMessage by remember { mutableStateOf("") }
-    var showWinDialog by remember { mutableStateOf(false) }
-    var winner by remember { mutableStateOf<Player?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
-    var player1RoundHistory by remember { mutableStateOf(listOf<Int>()) } // Historikk over rundetotaler, vist i UI
-    var player2RoundHistory by remember { mutableStateOf(listOf<Int>()) }
-    // Full logg over hvert enkelt kast (begge spillere, hele kampen). Dette er det som
-    // gjør undo mulig - vi kan "spole tilbake" state ved å se på siste oppføring.
-    var dartHistory by remember { mutableStateOf(listOf<DartThrow>()) }
 
     // Verdien det aktuelle tallpad-inputet representerer, med multiplikator tatt hensyn til
-    val currentInputScore = if (inputValue.isNotEmpty()) {
-        (inputValue.toIntOrNull() ?: 0) * multiplier
-    } else {
-        0
-    }
-    // Et enkelt dart-kast kan maks gi 60 poeng (Triple 20), så alt utenfor 0..60 er ugyldig
-    val isValidInput = if (inputValue.isEmpty()) {
-        false
-    } else {
-        currentInputScore in 0..60
+    val currentInputScore = (inputValue.toIntOrNull() ?: 0) * multiplier
+    // Bare summer én enkelt pil faktisk kan gi godtas - se isValidThrowInput.
+    val isValidInput = inputValue.toIntOrNull()?.let { isValidThrowInput(it, multiplier) } ?: false
+
+    fun clearInput() {
+        inputValue = ""
+        multiplier = 1
     }
 
-    val roundTotal = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
-
-    // Slår opp anbefalt utgangs-kombinasjon (checkout) for en gjenstående score, vist
-    // på PlayerCard slik at spilleren ser hvordan de kan avslutte kampen. Tabellen dekker
-    // alle scorer som faktisk er mulig å fullføre på 1-3 kast (maks er 170 = T20 T20 Bull).
-    // 2..40 (partall) dekkes generisk med "D{score/2}" siden alle disse er en ren double.
-    fun calculateCheckout(score: Int): String {
-        return when (score) {
-            170 -> "T20 T20 Bull"
-            167 -> "T20 T19 Bull"
-            164 -> "T20 T18 Bull"
-            161 -> "T20 T17 Bull"
-            160 -> "T20 T20 D20"
-            159 -> "No out shot"
-            158 -> "T20 T20 D19"
-            157 -> "T20 T19 D20"
-            156 -> "T20 T20 D18"
-            155 -> "T20 T19 D19"
-            154 -> "T20 T18 D20"
-            153 -> "T20 T19 D18"
-            152 -> "T20 T20 D16"
-            151 -> "T20 T17 D20"
-            150 -> "T20 T18 D18"
-            149 -> "T20 T19 D16"
-            148 -> "T20 T16 D20"
-            147 -> "T20 T17 D18"
-            146 -> "T20 T18 D16"
-            145 -> "T20 T15 D20"
-            144 -> "T20 T20 D12"
-            143 -> "T20 T17 D16"
-            142 -> "T20 T14 D20"
-            141 -> "T20 T19 D12"
-            140 -> "T20 T16 D16"
-            139 -> "T19 T14 D20"
-            138 -> "T20 T18 D12"
-            137 -> "T19 T16 D16"
-            136 -> "T20 T20 D8"
-            135 -> "T20 T17 D12"
-            134 -> "T20 T14 D16"
-            133 -> "T20 T19 D8"
-            132 -> "T20 T16 D12"
-            131 -> "T20 T13 D16"
-            130 -> "T20 20 Bull"
-            129 -> "T19 T16 D12"
-            128 -> "T18 T14 D16"
-            127 -> "T20 T17 D8"
-            126 -> "T19 T19 D6"
-            125 -> "25 T20 D20"
-            124 -> "T20 T16 D8"
-            123 -> "T19 T16 D9"
-            122 -> "T18 T20 D4"
-            121 -> "T17 T10 D20"
-            120 -> "T20 20 D20"
-            119 -> "T19 T10 D16"
-            118 -> "T20 18 D20"
-            117 -> "T20 17 D20"
-            116 -> "T20 16 D20"
-            115 -> "T20 15 D20"
-            114 -> "T20 14 D20"
-            113 -> "T20 13 D20"
-            112 -> "T20 12 D20"
-            111 -> "T20 19 D16"
-            110 -> "T20 18 D16"
-            109 -> "T19 20 D16"
-            108 -> "T20 16 D16"
-            107 -> "T19 18 D16"
-            106 -> "T20 14 D16"
-            105 -> "T19 16 D16"
-            104 -> "T18 18 D16"
-            103 -> "T20 3 D20"
-            102 -> "T20 10 D16"
-            101 -> "T20 1 D20"
-            100 -> "T20 D20"
-            99 -> "T19 10 D16"
-            98 -> "T20 D19"
-            97 -> "T19 D20"
-            96 -> "T20 D18"
-            95 -> "T19 D19"
-            94 -> "T18 D20"
-            93 -> "T19 D18"
-            92 -> "T20 D16"
-            91 -> "T17 D20"
-            90 -> "T20 D15"
-            89 -> "T19 D16"
-            88 -> "T16 D20"
-            87 -> "T17 D18"
-            86 -> "T18 D16"
-            85 -> "T15 D20"
-            84 -> "T20 D12"
-            83 -> "T17 D16"
-            82 -> "T14 D20"
-            81 -> "T19 D12"
-            80 -> "T20 D10"
-            79 -> "T13 D20"
-            78 -> "T18 D12"
-            77 -> "T19 D10"
-            76 -> "T20 D8"
-            75 -> "T17 D12"
-            74 -> "T14 D16"
-            73 -> "T19 D8"
-            72 -> "T16 D12"
-            71 -> "T13 D16"
-            70 -> "T10 D20"
-            69 -> "T15 D12"
-            68 -> "T20 D4"
-            67 -> "T17 D8"
-            66 -> "T10 D18"
-            65 -> "T19 D4"
-            64 -> "T16 D8"
-            63 -> "T13 D12"
-            62 -> "T10 D16"
-            61 -> "T15 D8"
-            60 -> "20 D20"
-            in 2..40 step 2 -> "D${score / 2}"
-            50 -> "Bull"
-            // Disse scorene kan ikke fullføres på noen lovlig måte (for høye, eller ikke
-            // nåbare med en gyldig kombinasjon av kast som ender på en double)
-            else -> if (score > 170 || score == 169 || score == 168 || score == 166 ||
-                score == 165 || score == 163 || score == 162 || score == 159) {
-                "No out shot"
-            } else ""
-        }
+    // Lukker bust-/no-score-dialogen ved å fjerne meldingen fra tilstanden
+    fun dismissMessage() {
+        gameState = gameState.copy(message = null)
+        clearInput()
     }
 
-    // Gjennomsnittlig poengsum per tre kast ("three-dart average"), den vanlige måten
-    // å måle en dartspillers nivå på. 501 - score = totalt antall poeng scoret så langt.
-    fun recalculateAverage(player: Player): Double {
-        if (player.dartsThrown == 0) return 0.0
-        val totalScoreThrown = 501 - player.score
-        return (totalScoreThrown.toDouble() / player.dartsThrown) * 3
-    }
-
-    // Sjekker om et kast (eller kastet som akkurat brakte scoren til 0) er en bust
-    // etter 501-reglene:
-    //  1. Går scoren under 0 -> alltid bust.
-    //  2. Havner du på nøyaktig 1 med double-out aktivert -> alltid bust, siden man da
-    //     aldri kan avslutte på en double (laveste double er D1=2).
-    //  3. Havner du på nøyaktig 0 med double-out aktivert, men siste kast ikke var en
-    //     double (og ikke bullseye, som teller som D25) -> bust.
-    // throwTotal sendes inn som 0 her fordi kalleren allerede har trukket fra scoren
-    // før checkBust kalles - currentScore er dermed allerede "scoren etter kastet".
-    fun checkBust(currentScore: Int, throwTotal: Int, lastDartWasDouble: Boolean, lastDartValue: Int): Pair<Boolean, String> {
-        val newScore = currentScore - throwTotal
-
-        if (newScore < 0) {
-            return Pair(true, "BUST! Score under 0")
-        }
-
-        if (newScore == 1 && doubleOutEnabled) {
-            return Pair(true, "BUST! Cannot finish on 1")
-        }
-
-        if (newScore == 0 && doubleOutEnabled && !lastDartWasDouble && lastDartValue != 50) {
-            return Pair(true, "BUST! Must finish on a double")
-        }
-
-        return Pair(false, "")
-    }
-
-    // Registrerer det gjeldende tallpad-inputet som spillerens neste kast. Dette er
-    // hovedfunksjonen for spilllogikken: den håndterer double-in-krav, trekker fra
-    // score, sjekker for bust, oppdaterer statistikk og bytter spiller/runde når runden
-    // er ferdig (3 kast) eller kampen er vunnet.
     fun confirmThrow() {
-        if (inputValue.isEmpty()) return
-
         val value = inputValue.toIntOrNull() ?: return
-        val throwValue = value * multiplier
-        val isDouble = multiplier == 2
-
-        val activePlayer = if (currentPlayer == 1) player1 else player2
-
-        // SPESIELL HÅNDTERING for throw 3 ved double in bust
-        // Double-in: spilleren må treffe en double før poengene i det hele tatt begynner
-        // å telle. Har spilleren ikke fått en double i løpet av runden (throw1/throw2/dette
-        // kastet), er runden bomskutt uansett hva throwValue er - og siden dette er det
-        // TREDJE og siste kastet, går runden rett videre til neste spiller (i stedet for
-        // å bare hoppe til neste kast, som skjer i grenen under for throw 1/2).
-        if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0 && currentThrow == 3) {
-            val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
-
-            if (!hasDoubleInRound) {
-                bustMessage = "BUST! Must have a double to start scoring"
-                showBustDialog = true
-
-                // Oppdater dartsThrown
-                if (currentPlayer == 1) {
-                    player1 = player1.copy(dartsThrown = player1.dartsThrown + 1)
-                } else {
-                    player2 = player2.copy(dartsThrown = player2.dartsThrown + 1)
-                }
-
-                // Legg til i dart history
-                dartHistory = dartHistory + DartThrow(
-                    playerId = currentPlayer,
-                    value = 0,
-                    wasDouble = false,
-                    throwNumber = 3
-                )
-
-                // BYTT SPILLER!
-                currentPlayer = if (currentPlayer == 1) 2 else 1
-                overallRound += 1
-                throw1 = null
-                throw2 = null
-                throw3 = null
-                throw1WasDouble = false
-                throw2WasDouble = false
-                throw3WasDouble = false
-                currentThrow = 1
-                inputValue = ""
-                multiplier = 1
-                return
-            }
-        }
-
-        // Samme double-in-sjekk som over, men for kast 1 og 2: her er ikke runden ferdig
-        // enda, så i stedet for å bytte spiller går vi bare videre til neste kast i runden
-        // (spilleren får fortsatt prøve å treffe en double på sine gjenværende kast).
-        if (doubleInEnabled && !activePlayer.hasScored && throwValue > 0 && currentThrow != 3) {
-            val hasDoubleInRound = throw1WasDouble || throw2WasDouble || isDouble
-
-            if (!hasDoubleInRound) {
-                bustMessage = "BUST! Must have a double to start scoring"
-                showBustDialog = true
-
-                // Oppdater dartsThrown!
-                if (currentPlayer == 1) {
-                    player1 = player1.copy(dartsThrown = player1.dartsThrown + 1)
-                } else {
-                    player2 = player2.copy(dartsThrown = player2.dartsThrown + 1)
-                }
-
-                // Legg til i dart history
-                dartHistory = dartHistory + DartThrow(
-                    playerId = currentPlayer,
-                    value = 0,
-                    wasDouble = false,
-                    throwNumber = currentThrow
-                )
-
-                // Gå til neste throw!
-                if (currentThrow == 1) {
-                    throw1 = null
-                    throw1WasDouble = false
-                    currentThrow = 2
-                } else if (currentThrow == 2) {
-                    throw1 = null
-                    throw2 = null
-                    throw1WasDouble = false
-                    throw2WasDouble = false
-                    currentThrow = 3
-                }
-
-                inputValue = ""
-                multiplier = 1
-                return
-            }
-        }
-
-        // Selve poeng-registreringen for gjeldende kast. Strukturen er lik for currentThrow
-        // 1, 2 og 3, men de skiller seg i to viktige ting:
-        //  - Hvor mye av rundens totalsum som allerede er kastet (throw1/throw2 fra
-        //    tidligere kast i samme runde legges sammen med dette kastet).
-        //  - "Fast checkout": kampen kan avsluttes på ETHVERT av de 3 kastene (så snart
-        //    scoren treffer nøyaktig 0 og det ikke er bust), ikke bare på kast 3. Derfor
-        //    må dartsThrown/average/roundsPlayed oppdateres og winner/showWinDialog settes
-        //    i alle tre grenene under, ikke bare i throw==3-grenen.
-        when (currentThrow) {
-            1 -> {
-                throw1 = throwValue
-                throw1WasDouble = isDouble
-
-                if (currentPlayer == 1) {
-                    val newScore = player1.score - throwValue
-                    player1 = player1.copy(
-                        score = newScore,
-                        dartsThrown = player1.dartsThrown + 1
-                    )
-
-                    // hasScored markerer at spilleren har "åpnet" scoringen sin (kun
-                    // relevant når double-in er aktivert - da må første poenggivende
-                    // kast være en double)
-                    if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
-                        player1 = player1.copy(hasScored = true)
-                    }
-
-                    if (newScore == 0) {
-                        // Scoren er nøyaktig 0 allerede på første kast - sjekk om dette er
-                        // et gyldig avslutningskast (double-out-krav)
-                        val (isBust, message) = checkBust(newScore, 0, throw1WasDouble, throwValue)
-                        if (isBust) {
-                            // Bust: gi tilbake poengene og gå videre til kast 2 i samme runde
-                            bustMessage = message
-                            showBustDialog = true
-                            player1 = player1.copy(score = player1.score + throwValue)
-                            throw1 = null
-                            throw1WasDouble = false
-                            currentThrow = 2
-                            inputValue = ""
-                            multiplier = 1
-                            return
-                        } else {
-                            // Gyldig checkout på første kast - kampen er vunnet med bare
-                            // ett kast i runden. dartsThrown ble allerede talt med over.
-                            player1 = player1.copy(
-                                lastThrow = throwValue,
-                                highestScore = maxOf(player1.highestScore, throwValue),
-                                roundsPlayed = player1.roundsPlayed + 1,
-                                average = recalculateAverage(player1)
-                            )
-                            player1RoundHistory = player1RoundHistory + throwValue
-                            winner = player1
-                            showWinDialog = true
-                            return
-                        }
-                    }
-                } else {
-                    // Speilbilde av player1-grenen over, samme logikk for player2
-                    val newScore = player2.score - throwValue
-                    player2 = player2.copy(
-                        score = newScore,
-                        dartsThrown = player2.dartsThrown + 1
-                    )
-
-                    if (throwValue > 0 && (!doubleInEnabled || isDouble)) {
-                        player2 = player2.copy(hasScored = true)
-                    }
-
-                    if (newScore == 0) {
-                        val (isBust, message) = checkBust(newScore, 0, throw1WasDouble, throwValue)
-                        if (isBust) {
-                            bustMessage = message
-                            showBustDialog = true
-                            player2 = player2.copy(score = player2.score + throwValue)
-                            throw1 = null
-                            throw1WasDouble = false
-                            currentThrow = 2
-                            inputValue = ""
-                            multiplier = 1
-                            return
-                        } else {
-                            player2 = player2.copy(
-                                lastThrow = throwValue,
-                                highestScore = maxOf(player2.highestScore, throwValue),
-                                roundsPlayed = player2.roundsPlayed + 1,
-                                average = recalculateAverage(player2)
-                            )
-                            player2RoundHistory = player2RoundHistory + throwValue
-                            winner = player2
-                            showWinDialog = true
-                            return
-                        }
-                    }
-                }
-
-                // Scoren traff ikke 0 (eller var bust) - gå videre til kast 2 og logg kastet
-                currentThrow = 2
-                dartHistory = dartHistory + DartThrow(
-                    playerId = currentPlayer,
-                    value = throwValue,
-                    wasDouble = isDouble,
-                    throwNumber = 1
-                )
-            }
-            2 -> {
-                throw2 = throwValue
-                throw2WasDouble = isDouble
-
-                if (currentPlayer == 1) {
-                    val newScore = player1.score - throwValue
-                    player1 = player1.copy(
-                        score = newScore,
-                        dartsThrown = player1.dartsThrown + 1
-                    )
-
-                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
-                        player1 = player1.copy(hasScored = true)
-                    }
-
-                    if (newScore == 0) {
-                        val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
-                        if (isBust) {
-                            // Bust på kast 2: gi tilbake BEGGE kastene i runden (throw1 + dette),
-                            // ikke bare det siste, siden hele runden annulleres
-                            bustMessage = message
-                            showBustDialog = true
-                            player1 = player1.copy(score = player1.score + (throw1 ?: 0) + throwValue)
-                            throw1 = null
-                            throw2 = null
-                            throw1WasDouble = false
-                            throw2WasDouble = false
-                            currentThrow = 3
-                            inputValue = ""
-                            multiplier = 1
-                            return
-                        } else {
-                            // Gyldig checkout på kast 2 - lastThrow/highestScore skal telle
-                            // summen av begge kastene i runden, ikke bare dette ene kastet
-                            val roundTotalNow = (throw1 ?: 0) + throwValue
-                            player1 = player1.copy(
-                                lastThrow = roundTotalNow,
-                                highestScore = maxOf(player1.highestScore, roundTotalNow),
-                                roundsPlayed = player1.roundsPlayed + 1,
-                                average = recalculateAverage(player1)
-                            )
-                            player1RoundHistory = player1RoundHistory + roundTotalNow
-                            winner = player1
-                            showWinDialog = true
-                            return
-                        }
-                    }
-                } else {
-                    // Speilbilde av player1-grenen over
-                    val newScore = player2.score - throwValue
-                    player2 = player2.copy(
-                        score = newScore,
-                        dartsThrown = player2.dartsThrown + 1
-                    )
-
-                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || isDouble)) {
-                        player2 = player2.copy(hasScored = true)
-                    }
-
-                    if (newScore == 0) {
-                        val (isBust, message) = checkBust(newScore, 0, throw2WasDouble, throwValue)
-                        if (isBust) {
-                            bustMessage = message
-                            showBustDialog = true
-                            player2 = player2.copy(score = player2.score + (throw1 ?: 0) + throwValue)
-                            throw1 = null
-                            throw2 = null
-                            throw1WasDouble = false
-                            throw2WasDouble = false
-                            currentThrow = 3
-                            inputValue = ""
-                            multiplier = 1
-                            return
-                        } else {
-                            val roundTotalNow = (throw1 ?: 0) + throwValue
-                            player2 = player2.copy(
-                                lastThrow = roundTotalNow,
-                                highestScore = maxOf(player2.highestScore, roundTotalNow),
-                                roundsPlayed = player2.roundsPlayed + 1,
-                                average = recalculateAverage(player2)
-                            )
-                            player2RoundHistory = player2RoundHistory + roundTotalNow
-                            winner = player2
-                            showWinDialog = true
-                            return
-                        }
-                    }
-                }
-
-                currentThrow = 3
-                dartHistory = dartHistory + DartThrow(
-                    playerId = currentPlayer,
-                    value = throwValue,
-                    wasDouble = isDouble,
-                    throwNumber = 2
-                )
-            }
-            // Siste kast i runden. I motsetning til kast 1 og 2 kalles checkBust her
-            // ALLTID (ikke bare når newScore == 0), fordi dette er siste sjanse i runden
-            // til å oppdage at spilleren gikk under 0 - hvis det skjedde på kast 1 eller 2
-            // fanges det ikke opp der (bust sjekkes kun ved score==0 i de kastene), men
-            // siden score kun blir mer negativ utover i runden vil det uansett fanges opp
-            // her, etter at alle 3 kastene er registrert.
-            3 -> {
-                throw3 = throwValue
-                throw3WasDouble = isDouble
-
-                val total = (throw1 ?: 0) + (throw2 ?: 0) + (throw3 ?: 0)
-
-                if (currentPlayer == 1) {
-                    val newScore = player1.score - throwValue
-                    player1 = player1.copy(score = newScore)
-
-                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
-                        player1 = player1.copy(hasScored = true)
-                    }
-
-                    val (isBust, message) = checkBust(newScore, 0, throw3WasDouble, throwValue)
-
-                    if (isBust) {
-                        // Bust på siste kast: gi tilbake HELE rundens poengsum (total,
-                        // ikke bare throwValue), siden score allerede ble trukket fra bare
-                        // for dette ene kastet over
-                        bustMessage = message
-                        showBustDialog = true
-                        val newDartsThrown = player1.dartsThrown + 1
-                        player1 = player1.copy(
-                            score = player1.score + total,
-                            dartsThrown = newDartsThrown
-                        )
-                    } else {
-                        // Gyldig runde (eller gyldig checkout på siste kast). Snittet regnes
-                        // ut fra en midlertidig kopi med oppdatert score/dartsThrown, siden
-                        // player1 selv ikke er oppdatert med de nye verdiene enda på dette
-                        // tidspunktet i .copy()-kallet.
-                        val newDartsThrown = player1.dartsThrown + 1
-
-                        player1 = player1.copy(
-                            lastThrow = total,
-                            highestScore = maxOf(player1.highestScore, total),
-                            roundsPlayed = player1.roundsPlayed + 1,
-                            dartsThrown = newDartsThrown,
-                            average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
-                        )
-                        player1RoundHistory = player1RoundHistory + total
-
-                        if (newScore == 0) {
-                            winner = player1
-                            showWinDialog = true
-                        }
-                    }
-                } else {
-                    // Speilbilde av player1-grenen over
-                    val newScore = player2.score - throwValue
-                    player2 = player2.copy(score = newScore)
-
-                    if (throwValue > 0 && (!doubleInEnabled || throw1WasDouble || throw2WasDouble || isDouble)) {
-                        player2 = player2.copy(hasScored = true)
-                    }
-
-                    val (isBust, message) = checkBust(newScore, 0, throw3WasDouble, throwValue)
-
-                    if (isBust) {
-                        bustMessage = message
-                        showBustDialog = true
-                        val newDartsThrown = player2.dartsThrown + 1
-                        player2 = player2.copy(
-                            score = player2.score + total,
-                            dartsThrown = newDartsThrown
-                        )
-                    } else {
-                        val newDartsThrown = player2.dartsThrown + 1
-
-                        player2 = player2.copy(
-                            lastThrow = total,
-                            highestScore = maxOf(player2.highestScore, total),
-                            roundsPlayed = player2.roundsPlayed + 1,
-                            dartsThrown = newDartsThrown,
-                            average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
-                        )
-                        player2RoundHistory = player2RoundHistory + total
-
-                        if (newScore == 0) {
-                            winner = player2
-                            showWinDialog = true
-                        }
-                    }
-                }
-
-                dartHistory = dartHistory + DartThrow(
-                    playerId = currentPlayer,
-                    value = throwValue,
-                    wasDouble = isDouble,
-                    throwNumber = 3
-                )
-
-                // Runden er ferdig (3 kast kastet) uten at kampen ble vunnet - bytt spiller
-                // og nullstill kastene for neste runde
-                currentPlayer = if (currentPlayer == 1) 2 else 1
-                overallRound += 1
-                throw1 = null
-                throw2 = null
-                throw3 = null
-                throw1WasDouble = false
-                throw2WasDouble = false
-                throw3WasDouble = false
-                currentThrow = 1
-            }
-        }
-
-        inputValue = ""
-        multiplier = 1
+        gameState = engine.applyThrow(gameState, value, multiplier)
+        clearInput()
     }
 
-    // Angrer det aller siste registrerte kastet (uansett hvilken spiller det var, og
-    // uansett om det var en bust eller ikke - bust-kast med value=0 legges også i
-    // dartHistory, se confirmThrow). Bygger opp igjen throw1/throw2/throw3-state ved å
-    // lete gjennom resten av dartHistory etter spillerens tidligere kast i samme runde.
     fun undoLastThrow() {
-        if (dartHistory.isEmpty()) return
+        gameState = engine.undo(gameState)
+        clearInput()
+    }
 
-        val lastDart = dartHistory.last()
-        dartHistory = dartHistory.dropLast(1)
+    // Lagrer den ferdigspilte kampen. Kalles direkte, ikke via rememberCoroutineScope:
+    // saveGame kjører selv videre på viewModelScope, mens skjermens eget scope kanselleres
+    // i det vi navigerer bort. Tidligere lå kallet inne i scope.launch { } rett før en
+    // navigate(), og rakk derfor ofte ikke å kjøre - kampen ble stille aldri lagret.
+    fun saveFinishedGame() {
+        val players = playerViewModel.players.value
+        val p1 = players.find { it.username == player1Name }
+        val p2 = players.find { it.username == player2Name }
+        if (p1 == null || p2 == null) return
 
-        val targetPlayer = if (lastDart.playerId == 1) player1 else player2
-        val newScore = targetPlayer.score + lastDart.value
-        val newDartsThrown = maxOf(0, targetPlayer.dartsThrown - 1)
-
-        if (lastDart.playerId == 1) {
-            player1 = player1.copy(
-                score = newScore,
-                dartsThrown = newDartsThrown,
-                average = recalculateAverage(player1.copy(score = newScore, dartsThrown = newDartsThrown))
+        gameViewModel.saveGame(
+            player1Id = p1.playerId,
+            player2Id = p2.playerId,
+            winnerId = if (gameState.winnerNumber == 1) p1.playerId else p2.playerId,
+            doubleIn = doubleInEnabled,
+            doubleOut = doubleOutEnabled,
+            player1Stats = GameStatsEntity(
+                gameId = 0,
+                playerId = p1.playerId,
+                average = player1.average,
+                highestScore = player1.highestScore,
+                dartsThrown = player1.dartsThrown,
+                roundsPlayed = player1.roundsPlayed,
+                finalScore = player1.score
+            ),
+            player2Stats = GameStatsEntity(
+                gameId = 0,
+                playerId = p2.playerId,
+                average = player2.average,
+                highestScore = player2.highestScore,
+                dartsThrown = player2.dartsThrown,
+                roundsPlayed = player2.roundsPlayed,
+                finalScore = player2.score
             )
-        } else {
-            player2 = player2.copy(
-                score = newScore,
-                dartsThrown = newDartsThrown,
-                average = recalculateAverage(player2.copy(score = newScore, dartsThrown = newDartsThrown))
-            )
-        }
+        )
+    }
 
-        // Gjenoppbygger throw1/throw2/throw3-visningen ut fra hvor i runden det angrede
-        // kastet var. Hvis det var kast 1, var det ingen tidligere kast i runden å vise -
-        // vi hopper rett tilbake til currentThrow = 1. Var det kast 2 eller 3, må vi finne
-        // spillerens forrige kast(ene) i samme runde fra det som er igjen i dartHistory.
-        when (lastDart.throwNumber) {
-            1 -> {
-                throw1 = null
-                throw1WasDouble = false
-
-                // Kast 1 var starten på runden - hvis motstanderen har kastet etter dette
-                // (currentPlayer er ikke lenger lastDart sin spiller), må vi bytte tilbake
-                // til denne spilleren og gå én runde tilbake
-                if (currentPlayer != lastDart.playerId) {
-                    currentPlayer = lastDart.playerId
-                    overallRound = maxOf(1, overallRound - 1)
-                }
-                currentThrow = 1
-            }
-            2 -> {
-                throw2 = null
-                throw2WasDouble = false
-
-                // Finn spillerens kast 1 i samme runde (siste treff med throwNumber==1
-                // for denne spilleren i det som er igjen av historikken) og gjenopprett det
-                val previousThrow1 = dartHistory.lastOrNull {
-                    it.playerId == lastDart.playerId && it.throwNumber == 1
-                }
-                if (previousThrow1 != null) {
-                    throw1 = previousThrow1.value
-                    throw1WasDouble = previousThrow1.wasDouble
-                }
-
-                if (currentPlayer != lastDart.playerId) {
-                    currentPlayer = lastDart.playerId
-                }
-                currentThrow = 2
-            }
-            3 -> {
-                throw3 = null
-                throw3WasDouble = false
-
-                // Samme prinsipp som over, men må gjenopprette både kast 1 og kast 2
-                val previousThrows = dartHistory.filter { it.playerId == lastDart.playerId }
-                val previousThrow1 = previousThrows.lastOrNull { it.throwNumber == 1 }
-                val previousThrow2 = previousThrows.lastOrNull { it.throwNumber == 2 }
-
-                if (previousThrow1 != null) {
-                    throw1 = previousThrow1.value
-                    throw1WasDouble = previousThrow1.wasDouble
-                }
-                if (previousThrow2 != null) {
-                    throw2 = previousThrow2.value
-                    throw2WasDouble = previousThrow2.wasDouble
-                }
-
-                if (currentPlayer != lastDart.playerId) {
-                    currentPlayer = lastDart.playerId
-                }
-                currentThrow = 3
-            }
-        }
-
-        // Var det angrede kastet det tredje (siste) i runden, må vi også rulle tilbake
-        // roundsPlayed/lastThrow/roundHistory til slik det var FØR den runden - da må vi
-        // se på runden før den igjen (takeLast(3) på det som er igjen i historikken)
-        if (lastDart.throwNumber == 3) {
-            val previousRoundTotal = dartHistory
-                .filter { it.playerId == lastDart.playerId }
-                .takeLast(3)
-                .sumOf { it.value }
-
-            if (lastDart.playerId == 1) {
-                player1 = player1.copy(
-                    lastThrow = if (previousRoundTotal > 0) previousRoundTotal else 0,
-                    roundsPlayed = maxOf(0, player1.roundsPlayed - 1)
-                )
-                if (player1RoundHistory.isNotEmpty()) {
-                    player1RoundHistory = player1RoundHistory.dropLast(1)
-                }
-            } else {
-                player2 = player2.copy(
-                    lastThrow = if (previousRoundTotal > 0) previousRoundTotal else 0,
-                    roundsPlayed = maxOf(0, player2.roundsPlayed - 1)
-                )
-                if (player2RoundHistory.isNotEmpty()) {
-                    player2RoundHistory = player2RoundHistory.dropLast(1)
-                }
-            }
-        }
-
-        inputValue = ""
-        multiplier = 1
+    // Nullstiller til en ny kamp med de samme to spillerne. Denne nullstillingen lå
+    // tidligere inne i den samme if-en som sjekket at begge spillerprofilene fantes i
+    // databasen - fant den dem ikke, ble ingenting nullstilt, og vinner-dialogen (som
+    // ikke kan lukkes med tilbake eller trykk utenfor) ble stående for alltid.
+    fun startRematch() {
+        firstPlayer = if (firstPlayer == 1) 2 else 1
+        gameState = engine.rematch(gameState, firstPlayer)
+        clearInput()
     }
 
     // Bekreftelsesdialog når brukeren trykker tilbake-pilen midt i en kamp - kampen
@@ -884,24 +226,16 @@ fun GameScreen(
         )
     }
 
-    // Vises når confirmThrow() oppdaget en bust (se checkBust/confirmThrow). bustMessage
-    // forteller hvilken av de tre bust-reglene som ble brutt.
+    // Vises når motoren meldte bust, eller at kastet ikke ga poeng fordi spilleren
+    // ikke har åpnet scoringen enda (double-in). bustTitle skiller de to.
     if (showBustDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showBustDialog = false
-                inputValue = ""
-                multiplier = 1
-            },
-            title = { Text("BUST!", fontWeight = FontWeight.Bold, color = Color.White) },
+            onDismissRequest = { dismissMessage() },
+            title = { Text(bustTitle, fontWeight = FontWeight.Bold, color = Color.White) },
             text = { Text(bustMessage, color = Color.White) },
             confirmButton = {
                 Button(
-                    onClick = {
-                        showBustDialog = false
-                        inputValue = ""
-                        multiplier = 1
-                    },
+                    onClick = { dismissMessage() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFF5252)
                     )
@@ -976,45 +310,7 @@ fun GameScreen(
                     ) {
                         Button(
                             onClick = {
-                                scope.launch {
-                                    val players = playerViewModel.players.value
-                                    val p1 = players.find { it.username == player1Name }
-                                    val p2 = players.find { it.username == player2Name }
-
-                                    if (p1 != null && p2 != null) {
-                                        val winnerId = if (winner == player1) p1.playerId else p2.playerId
-
-                                        val player1Stats = GameStatsEntity(
-                                            gameId = 0,
-                                            playerId = p1.playerId,
-                                            average = player1.average,
-                                            highestScore = player1.highestScore,
-                                            dartsThrown = player1.dartsThrown,
-                                            roundsPlayed = player1.roundsPlayed,
-                                            finalScore = player1.score
-                                        )
-
-                                        val player2Stats = GameStatsEntity(
-                                            gameId = 0,
-                                            playerId = p2.playerId,
-                                            average = player2.average,
-                                            highestScore = player2.highestScore,
-                                            dartsThrown = player2.dartsThrown,
-                                            roundsPlayed = player2.roundsPlayed,
-                                            finalScore = player2.score
-                                        )
-
-                                        gameViewModel.saveGame(
-                                            player1Id = p1.playerId,
-                                            player2Id = p2.playerId,
-                                            winnerId = winnerId,
-                                            doubleIn = doubleInEnabled,
-                                            doubleOut = doubleOutEnabled,
-                                            player1Stats = player1Stats,
-                                            player2Stats = player2Stats
-                                        )
-                                    }
-                                }
+                                saveFinishedGame()
                                 // main_menu blir ny bunn i back-stacken (popUpTo inclusive) -
                                 // "tilbake" fra hovedmenyen skal aldri kunne havne tilbake i
                                 // den ferdigspilte kampen
@@ -1034,68 +330,10 @@ fun GameScreen(
                         // kamp starter med de samme to spillerne uten å forlate skjermen
                         Button(
                             onClick = {
-                                scope.launch {
-                                    val players = playerViewModel.players.value
-                                    val p1 = players.find { it.username == player1Name }
-                                    val p2 = players.find { it.username == player2Name }
-
-                                    if (p1 != null && p2 != null) {
-                                        val winnerId = if (winner == player1) p1.playerId else p2.playerId
-
-                                        val player1Stats = GameStatsEntity(
-                                            gameId = 0,
-                                            playerId = p1.playerId,
-                                            average = player1.average,
-                                            highestScore = player1.highestScore,
-                                            dartsThrown = player1.dartsThrown,
-                                            roundsPlayed = player1.roundsPlayed,
-                                            finalScore = player1.score
-                                        )
-
-                                        val player2Stats = GameStatsEntity(
-                                            gameId = 0,
-                                            playerId = p2.playerId,
-                                            average = player2.average,
-                                            highestScore = player2.highestScore,
-                                            dartsThrown = player2.dartsThrown,
-                                            roundsPlayed = player2.roundsPlayed,
-                                            finalScore = player2.score
-                                        )
-
-                                        gameViewModel.saveGame(
-                                            player1Id = p1.playerId,
-                                            player2Id = p2.playerId,
-                                            winnerId = winnerId,
-                                            doubleIn = doubleInEnabled,
-                                            doubleOut = doubleOutEnabled,
-                                            player1Stats = player1Stats,
-                                            player2Stats = player2Stats
-                                        )
-
-                                        // Bytt hvem som starter neste kamp, som i en vanlig
-                                        // darts-revansje (taperen/den som ikke startet forrige gang kaster først)
-                                        firstPlayer = if (firstPlayer == 1) 2 else 1
-                                        currentPlayer = firstPlayer
-
-                                        player1 = Player(player1Name)
-                                        player2 = Player(player2Name)
-                                        player1RoundHistory = listOf()
-                                        player2RoundHistory = listOf()
-                                        dartHistory = listOf()
-                                        overallRound = 1
-                                        throw1 = null
-                                        throw2 = null
-                                        throw3 = null
-                                        throw1WasDouble = false
-                                        throw2WasDouble = false
-                                        throw3WasDouble = false
-                                        currentThrow = 1
-                                        winner = null
-                                        showWinDialog = false
-                                        inputValue = ""
-                                        multiplier = 1
-                                    }
-                                }
+                                saveFinishedGame()
+                                // Nullstillingen skjer uansett om kampen lot seg lagre eller
+                                // ikke - ellers blir vinner-dialogen stående uten vei ut
+                                startRematch()
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(

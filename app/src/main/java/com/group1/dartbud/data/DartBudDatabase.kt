@@ -41,10 +41,11 @@ abstract class DartBudDatabase : RoomDatabase() {
                     DartBudDatabase::class.java,
                     "dartbud_database"
                 )
-                    // NB: sletter og gjenoppretter hele databasen ved skjemaendring
-                    // i steden for å migrere data. Greit under utvikling, men fører
-                    // til datatap for eksisterende brukere ved versjonsøkning i produksjon.
-                    .fallbackToDestructiveMigration()
+                    // Bevisst UTEN fallbackToDestructiveMigration(): den slettet hele
+                    // databasen ved enhver versjonsøkning, altså all spillhistorikk og
+                    // alle profiler for brukeren. Nå må hver framtidig skjemaendring
+                    // følges av en Migration her - glemmes det, feiler appen synlig
+                    // under utvikling i stedet for å slette brukerens data i stillhet.
                     .build()
                 INSTANCE = instance
                 instance
