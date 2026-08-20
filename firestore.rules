@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Sikkerhetsregler for Firestore-databasen (prosjekt: dartbud-1def6).
+//
+// Reglene bor her i repoet slik at de er versjonskontrollert og kan leses i
+// kodegjennomgang. Firebase leser dem IKKE herfra av seg selv - de må publiseres
+// til prosjektet, enten i Firebase Console (Firestore Database -> Rules) eller med
+// Firebase CLI:  firebase deploy --only firestore:rules
+//
+// Bakgrunn: reglene var tidligere
+//     match /{document=**} { allow read, write: if request.auth != 0; }
+// Det var en skrivefeil for != null, men effekten var verre enn som så: i
+// regelspråket gir en ulikhetssammenligning mellom to ulike typer alltid true,
+// så betingelsen var sann også for uinnloggede. Hele databasen - navn,
+// e-postadresser, profilbilder og spillstatistikk - lå åpen for lesing og
+// skriving for hvem som helst som kjente prosjekt-IDen, og den ligger i APK-en.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // All brukerdata ligger under users/{userId}, der userId er Firebase Auth-uid.
+    // Se FirestoreRepository: profiler under users/{uid}/profiles/{profileId} og
+    // ferdigspilte kamper under users/{uid}/games/{gameId}.
+    //
+    // To krav, og begge trengs:
+    //   request.auth != null          - avviser uinnloggede
+    //   request.auth.uid == userId    - hindrer at én innlogget bruker leser
+    //                                   eller endrer en annen brukers data
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Alt annet er stengt. Gjestebrukere lagrer kun lokalt i Room og trenger
+    // ingen tilgang hit, jf. personvernerklæringen (PRIVACY.md).
+  }
+}

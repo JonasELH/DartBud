@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1047061559331-btn7v99mkhjspk1vs4a80g98pq65cqp4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.group1.dartbud",
+            "certificate_hash": "a49f894f523cf96d9c07063961f3562c61f1746f"
+          }
+        },
+        {
           "client_id": "1047061559331-jafnsh20s30224q1cvuisu5onponnatg.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
