@@ -146,7 +146,16 @@ fun GameScreen(
         val players = playerViewModel.players.value
         val p1 = players.find { it.username == player1Name }
         val p2 = players.find { it.username == player2Name }
-        if (p1 == null || p2 == null) return
+        if (p1 == null || p2 == null) {
+            android.util.Log.w(
+                "SaveDebug",
+                "Lagring hoppet over. player1Name='$player1Name' (funnet=${p1 != null}), " +
+                    "player2Name='$player2Name' (funnet=${p2 != null}), " +
+                    "kjente brukernavn i Room: ${players.map { "'${it.username}'" }}"
+            )
+            return
+        }
+        android.util.Log.i("SaveDebug", "Fant begge spillerne, kaller saveGame() na")
 
         gameViewModel.saveGame(
             player1Id = p1.playerId,
