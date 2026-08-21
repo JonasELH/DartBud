@@ -226,7 +226,8 @@ fun GameHistoryCard(
                         Text(
                             player1?.username ?: "Unknown",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            color = Color.Black
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         player1Stats?.let { stats ->
@@ -244,7 +245,8 @@ fun GameHistoryCard(
                         Text(
                             player2?.username ?: "Unknown",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            color = Color.Black
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         player2Stats?.let { stats ->
@@ -296,7 +298,8 @@ fun StatRow(label: String, value: String) {
         Text(
             value,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
     }
 }
