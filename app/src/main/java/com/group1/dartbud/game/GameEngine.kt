@@ -243,6 +243,76 @@ class GameEngine(
     }
 
     /**
+     * Registrerer en hel runde på én gang (Calculator Mode av): spilleren har allerede
+     * regnet ut summen selv, i stedet for å taste inn ett og ett kast.
+     *
+     * Til forskjell fra applyThrow blir double-in/double-out IKKE verifisert her.
+     * Spilleren vet selv om reglene ble oppfylt - traff de ikke doblingen som trengtes
+     * (for å åpne med double-in, eller for å avslutte med double-out), taster de inn 0
+     * (eller trykker "No Score") i stedet for et tall som later som noe annet talte.
+     * Motoren kan derfor bare fange de to tilfellene ingen spillerdømmekraft kan endre
+     * på: å gå under 0, og å lande på nøyaktig 1 med double-out.
+     *
+     * dartsUsedForCheckout er kun relevant når summen treffer nøyaktig 0. UI-laget må
+     * spørre spilleren "hvor mange piler brukte du?" FØR dette kalles i det tilfellet,
+     * siden det trengs for et riktig snitt - ellers antas 3 piler, som stemmer for
+     * alle runder som ikke avslutter kampen.
+     */
+    fun applyRoundTotal(state: GameState, total: Int, dartsUsedForCheckout: Int = 3): GameState {
+        if (state.winnerNumber != 0) return state
+        if (total !in 0..180) return state
+
+        val active = state.activePlayer
+
+        // Snapshot av alt FØR runden brukes, slik at undo kan spole nøyaktig tilbake.
+        val snapshot = state.copy(history = emptyList(), message = null)
+        var next = state.copy(history = state.history + snapshot, message = null)
+
+        val newScore = active.score - total
+
+        val bust = checkBust(newScore, lastDartWasDouble = true) // se kommentar under
+        // lastDartWasDouble=true her betyr at "må avslutte på dobbel"-sjekken i
+        // checkBust aldri slår ut - den sjekken forutsetter at motoren VET hvilken
+        // pil som var siste, noe den ikke gjør i denne modusen. De to sjekkene som
+        // gjenstår (under 0, og nøyaktig 1) er fortsatt fullt gyldige uansett piler.
+        if (bust != null) {
+            val dartsThrown = active.dartsThrown + 3
+            val updated = active.copy(
+                dartsThrown = dartsThrown,
+                average = recalculateAverage(active.copy(dartsThrown = dartsThrown))
+            )
+            next = withPlayer(next, updated).copy(message = GameMessage("BUST!", bust))
+            return endTurn(next)
+        }
+
+        // I motsetning til applyThrow er hver runde her alltid en FULLFØRT tur - det
+        // finnes ingen "midt i runden" å vente på flere kast fra, siden spilleren
+        // taster inn hele rundens sum på én gang. Statistikken oppdateres derfor
+        // alltid, ikke bare når kampen faktisk vinnes.
+        val isCheckout = newScore == 0
+        val dartsUsed = if (isCheckout) dartsUsedForCheckout.coerceIn(1, 3) else 3
+
+        var updated = active.copy(
+            score = newScore,
+            dartsThrown = active.dartsThrown + dartsUsed,
+            hasScored = active.hasScored || total > 0,
+            lastThrow = total,
+            highestScore = maxOf(active.highestScore, total),
+            roundsPlayed = active.roundsPlayed + 1
+        )
+        updated = updated.copy(average = recalculateAverage(updated))
+        next = withPlayer(next, updated)
+
+        next = if (next.currentPlayer == 1) {
+            next.copy(player1RoundHistory = next.player1RoundHistory + total)
+        } else {
+            next.copy(player2RoundHistory = next.player2RoundHistory + total)
+        }
+
+        return if (isCheckout) next.copy(winnerNumber = next.currentPlayer) else endTurn(next)
+    }
+
+    /**
      * Angrer siste kast ved å hente frem snapshotet som ble tatt rett før det.
      * Alt rulles tilbake i ett, inkludert en eventuell seier.
      */

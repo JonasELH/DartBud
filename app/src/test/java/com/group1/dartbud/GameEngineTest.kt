@@ -352,4 +352,130 @@ class GameEngineTest {
         assertEquals(0, s.winner?.score)
         assertNotNull(s.winner)
     }
+
+    // ---------- Calculator Mode av: rundetotal i stedet for enkeltkast ----------
+
+    @Test
+    fun `rundetotal trekkes fra og turen gar videre`() {
+        var s = start()
+        s = standard.applyRoundTotal(s, 100)
+        assertEquals(401, s.player1.score)
+        assertEquals(2, s.currentPlayer)
+        assertEquals(3, s.player1.dartsThrown)
+        assertEquals(1, s.player1.roundsPlayed)
+        assertEquals(100, s.player1.lastThrow)
+        assertEquals(listOf(100), s.player1RoundHistory)
+    }
+
+    @Test
+    fun `no score er det samme som a taste inn 0`() {
+        var s = start()
+        s = standard.applyRoundTotal(s, 0)
+        assertEquals(501, s.player1.score)
+        assertEquals(2, s.currentPlayer)
+        assertEquals(3, s.player1.dartsThrown)
+        assertEquals(listOf(0), s.player1RoundHistory)
+    }
+
+    @Test
+    fun `rundetotal under 0 er bust og ruller tilbake`() {
+        var s = start().withP1Score(50)
+        s = standard.applyRoundTotal(s, 60)
+        assertEquals("scoren skal tilbakestilles", 50, s.player1.score)
+        assertEquals(2, s.currentPlayer)
+        assertEquals("BUST!", s.message?.title)
+        assertEquals(3, s.player1.dartsThrown)
+    }
+
+    @Test
+    fun `rundetotal som lander pa 1 er bust med double out`() {
+        var s = start().withP1Score(61)
+        s = standard.applyRoundTotal(s, 60)
+        assertEquals(61, s.player1.score)
+        assertEquals("BUST! Cannot finish on 1", s.message?.text)
+    }
+
+    @Test
+    fun `rundetotal som lander pa 1 er ikke bust uten double out`() {
+        var s = start().withP1Score(61)
+        s = noDoubleOut.applyRoundTotal(s, 60)
+        assertEquals(1, s.player1.score)
+        assertNull(s.message)
+    }
+
+    @Test
+    fun `motoren spor ikke om siste kast var dobbel - spilleren avgjor selv`() {
+        // Kjernen i forenklingen: traff spilleren ikke faktisk en dobbel, skal de
+        // heller ha tastet 0 (eller trykket No Score). Taster de en sum som treffer
+        // nøyaktig 0, stoler motoren pa at det var et gyldig avslutningskast.
+        var s = start().withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        assertEquals(1, s.winnerNumber)
+        assertNull(s.message)
+    }
+
+    @Test
+    fun `checkout bruker antall piler som er oppgitt for riktig snitt`() {
+        var s = start().withP1Score(100)
+        s = standard.applyRoundTotal(s, 100, dartsUsedForCheckout = 2)
+        assertEquals(1, s.winnerNumber)
+        assertEquals(2, s.player1.dartsThrown)
+    }
+
+    @Test
+    fun `checkout uten oppgitt antall piler antar 3`() {
+        var s = start().withP1Score(100)
+        s = standard.applyRoundTotal(s, 100)
+        assertEquals(3, s.player1.dartsThrown)
+    }
+
+    @Test
+    fun `rundetotal utenfor 0 til 180 avvises`() {
+        val s = start()
+        assertEquals(s, standard.applyRoundTotal(s, 181))
+        assertEquals(s, standard.applyRoundTotal(s, -1))
+    }
+
+    @Test
+    fun `kast etter seier med rundetotal ignoreres`() {
+        var s = start().withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        val etter = standard.applyRoundTotal(s, 50)
+        assertEquals(s, etter)
+    }
+
+    @Test
+    fun `undo fungerer for rundetotal som for enkeltkast`() {
+        var s = start()
+        s = standard.applyRoundTotal(s, 100)
+        s = standard.undo(s)
+        assertEquals(start(), s.copy(history = emptyList()))
+    }
+
+    @Test
+    fun `undo av vinnende rundetotal fjerner seieren`() {
+        var s = start().withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        assertEquals(1, s.winnerNumber)
+        s = standard.undo(s)
+        assertEquals(0, s.winnerNumber)
+        assertEquals(40, s.player1.score)
+    }
+
+    @Test
+    fun `hoyeste score folger rundetotalen`() {
+        var s = start()
+        s = standard.applyRoundTotal(s, 140)
+        assertEquals(140, s.player1.highestScore)
+    }
+
+    @Test
+    fun `snitt regnes riktig over flere rundetotaler`() {
+        var s = start()
+        s = standard.applyRoundTotal(s, 100)
+        s = standard.applyRoundTotal(s, 60) // spiller 2 sin tur
+        s = standard.applyRoundTotal(s, 80) // spiller 1 igjen
+        // spiller 1: 100 + 80 = 180 poeng pa 6 piler -> snitt 90.0
+        assertEquals(90.0, s.player1.average, 0.001)
+    }
 }

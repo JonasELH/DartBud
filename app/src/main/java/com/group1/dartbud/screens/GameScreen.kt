@@ -51,6 +51,8 @@ fun GameScreen(
     navController: NavController,
     doubleInEnabled: Boolean = false, // Krever double for å "åpne" scoring (double-in)
     doubleOutEnabled: Boolean = true, // Krever double (eller bullseye) for å avslutte kampen
+    calculatorModeEnabled: Boolean = false, // PÅ: dart for dart. AV: tast inn hele rundetotalen
+    quickScoresEnabled: Boolean = false, // Snarveisknapper for vanlige rundetotaler (26/41/45/60/85/100)
     player1Name: String = "PLAYER 1",
     player2Name: String = "PLAYER 2",
     gameViewModel: GameViewModel = viewModel(),
@@ -111,10 +113,24 @@ fun GameScreen(
     var multiplier by remember { mutableStateOf(1) }
     var showExitDialog by remember { mutableStateOf(false) }
 
+    // Calculator Mode av: spørsmålet "hvor mange piler brukte du?" vises kun når en
+    // rundetotal treffer nøyaktig 0 - se confirmRoundTotal(). pendingRoundTotal holder
+    // på summen mens spilleren svarer, siden den ikke skal sendes til motoren før vi
+    // vet antall piler (trengs for et riktig snitt).
+    var showCheckoutDartsDialog by remember { mutableStateOf(false) }
+    var pendingRoundTotal by remember { mutableStateOf(0) }
+
     // Verdien det aktuelle tallpad-inputet representerer, med multiplikator tatt hensyn til
     val currentInputScore = (inputValue.toIntOrNull() ?: 0) * multiplier
-    // Bare summer én enkelt pil faktisk kan gi godtas - se isValidThrowInput.
-    val isValidInput = inputValue.toIntOrNull()?.let { isValidThrowInput(it, multiplier) } ?: false
+    // Calculator Mode på: bare summer én enkelt pil faktisk kan gi godtas (isValidThrowInput).
+    // Calculator Mode av: hele rundetotalen skrives inn direkte, gyldig område er 0-180
+    // (maks er tre trippel-20). Motoren stoler på spilleren for double-in/double-out -
+    // se GameEngine.applyRoundTotal.
+    val isValidInput = if (calculatorModeEnabled) {
+        inputValue.toIntOrNull()?.let { isValidThrowInput(it, multiplier) } ?: false
+    } else {
+        inputValue.toIntOrNull()?.let { it in 0..180 } ?: false
+    }
 
     fun clearInput() {
         inputValue = ""
@@ -130,6 +146,37 @@ fun GameScreen(
     fun confirmThrow() {
         val value = inputValue.toIntOrNull() ?: return
         gameState = engine.applyThrow(gameState, value, multiplier)
+        clearInput()
+    }
+
+    // Calculator Mode av: bekrefter en innskrevet rundetotal. Bringer den scoren til
+    // nøyaktig 0, må vi vite hvor mange piler som ble brukt (for snittet) FØR vi sender
+    // noe til motoren - så her stopper vi opp og spør i stedet for å kalle
+    // applyRoundTotal med en gang.
+    fun confirmRoundTotal(quickValue: Int? = null) {
+        val value = quickValue ?: inputValue.toIntOrNull() ?: return
+        val wouldFinish = gameState.activePlayer.score - value == 0
+        if (wouldFinish) {
+            pendingRoundTotal = value
+            showCheckoutDartsDialog = true
+        } else {
+            gameState = engine.applyRoundTotal(gameState, value)
+            clearInput()
+        }
+    }
+
+    // "No Score"-knappen: en snarvei for å taste inn 0. Kan aldri utløse
+    // checkout-spørsmålet over, siden en spiller ikke kan stå på 0 poeng igjen
+    // midt i en kamp.
+    fun confirmNoScore() {
+        gameState = engine.applyRoundTotal(gameState, 0)
+        clearInput()
+    }
+
+    // Svar på "hvor mange piler brukte du til å avslutte?"-dialogen.
+    fun confirmCheckoutDarts(darts: Int) {
+        gameState = engine.applyRoundTotal(gameState, pendingRoundTotal, dartsUsedForCheckout = darts)
+        showCheckoutDartsDialog = false
         clearInput()
     }
 
@@ -229,6 +276,48 @@ fun GameScreen(
                     onClick = { showExitDialog = false }
                 ) {
                     Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = Color(0xDD000000)
+        )
+    }
+
+    // Round Total-modus: vises når en innskrevet sum bringer scoren til nøyaktig 0.
+    // Motoren stoler på at spilleren faktisk traff en gyldig avslutning (se
+    // GameEngine.applyRoundTotal), men trenger antall piler for å regne riktig snitt -
+    // det er alt dette spørsmålet handler om, ikke om avslutningen var gyldig.
+    if (showCheckoutDartsDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text(
+                    "Checkout!",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    "How many darts did you use to checkout?",
+                    color = Color.White
+                )
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(1, 2, 3).forEach { darts ->
+                        Button(
+                            onClick = { confirmCheckoutDarts(darts) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            )
+                        ) {
+                            Text("$darts", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             },
             containerColor = Color(0xDD000000)
@@ -400,7 +489,11 @@ fun GameScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.25f),
+                    // Uten Calculator Mode vises ikke throw 1/2/3-raden under (den har
+                    // ingenting meningsfullt å vise når inndata er en rundetotal, ikke
+                    // enkeltkast), så spillervinduene arver dens vekt (0,05) og vokser
+                    // tilsvarende for å fylle plassen.
+                    .weight(if (calculatorModeEnabled) 0.25f else 0.30f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 PlayerCard(
@@ -426,39 +519,44 @@ fun GameScreen(
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.05f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ThrowButton(
-                    label = "THROW 1:",
-                    value = throw1,
-                    isActive = currentThrow == 1,
+            // Skjules i Round Total-modus - ingen mening å vise "kast 1/2/3" når
+            // inndata er én sum for hele runden. Se PlayerCard-raden over for hvor
+            // denne vekten (0,05) havner i stedet.
+            if (calculatorModeEnabled) {
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(4.dp)
-                        .fillMaxHeight()
-                )
-                ThrowButton(
-                    label = "THROW 2:",
-                    value = throw2,
-                    isActive = currentThrow == 2,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(4.dp)
-                        .fillMaxHeight()
-                )
-                ThrowButton(
-                    label = "THROW 3:",
-                    value = throw3,
-                    isActive = currentThrow == 3,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(4.dp)
-                        .fillMaxHeight()
-                )
+                        .fillMaxWidth()
+                        .weight(0.05f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ThrowButton(
+                        label = "THROW 1:",
+                        value = throw1,
+                        isActive = currentThrow == 1,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(4.dp)
+                            .fillMaxHeight()
+                    )
+                    ThrowButton(
+                        label = "THROW 2:",
+                        value = throw2,
+                        isActive = currentThrow == 2,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(4.dp)
+                            .fillMaxHeight()
+                    )
+                    ThrowButton(
+                        label = "THROW 3:",
+                        value = throw3,
+                        isActive = currentThrow == 3,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(4.dp)
+                            .fillMaxHeight()
+                    )
+                }
             }
 
             // Viser tallpad-inputet live etter hvert som brukeren taster, med multiplikatoren
@@ -547,56 +645,84 @@ fun GameScreen(
                     }
                 }
 
-                val doubleInteraction = remember { MutableInteractionSource() }
-                val isDoublePressed by doubleInteraction.collectIsPressedAsState()
+                if (calculatorModeEnabled) {
+                    val doubleInteraction = remember { MutableInteractionSource() }
+                    val isDoublePressed by doubleInteraction.collectIsPressedAsState()
 
-                Button(
-                    onClick = { multiplier = if (multiplier == 2) 1 else 2 },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF505050)
-                    ),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(
-                        0xFFDECA2A
-                    )
-                    ) else null,
-                    interactionSource = doubleInteraction
-                ) {
-                    Text(
-                        "Double",
-                        fontSize = actionButtonFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+                    Button(
+                        onClick = { multiplier = if (multiplier == 2) 1 else 2 },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF505050)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (multiplier == 2 || isDoublePressed) BorderStroke(3.dp, Color(
+                            0xFFDECA2A
+                        )
+                        ) else null,
+                        interactionSource = doubleInteraction
+                    ) {
+                        Text(
+                            "Double",
+                            fontSize = actionButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
 
-                val tripleInteraction = remember { MutableInteractionSource() }
-                val isTriplePressed by tripleInteraction.collectIsPressedAsState()
+                    val tripleInteraction = remember { MutableInteractionSource() }
+                    val isTriplePressed by tripleInteraction.collectIsPressedAsState()
 
-                Button(
-                    onClick = { multiplier = if (multiplier == 3) 1 else 3 },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxSize(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF505050)
-                    ),
-                    shape = RoundedCornerShape(6.dp),
-                    border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(
-                        0xFFDECA2A
-                    )
-                    ) else null,
-                    interactionSource = tripleInteraction
-                ) {
-                    Text(
-                        "Triple",
-                        fontSize = actionButtonFontSize,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Button(
+                        onClick = { multiplier = if (multiplier == 3) 1 else 3 },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF505050)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (multiplier == 3 || isTriplePressed) BorderStroke(3.dp, Color(
+                            0xFFDECA2A
+                        )
+                        ) else null,
+                        interactionSource = tripleInteraction
+                    ) {
+                        Text(
+                            "Triple",
+                            fontSize = actionButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                } else {
+                    // Round Total-modus: Double/Triple gir ingen mening (det er ingen
+                    // enkeltpil å multiplisere), så plassen deres blir én "No Score"-knapp -
+                    // en snarvei for å taste inn 0 uten å måtte bruke tallpaden.
+                    val noScoreInteraction = remember { MutableInteractionSource() }
+                    val isNoScorePressed by noScoreInteraction.collectIsPressedAsState()
+
+                    Button(
+                        onClick = { confirmNoScore() },
+                        modifier = Modifier
+                            .weight(2f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF8B2020)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isNoScorePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        interactionSource = noScoreInteraction
+                    ) {
+                        Text(
+                            "No Score",
+                            fontSize = actionButtonFontSize,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
@@ -626,6 +752,14 @@ fun GameScreen(
                     .padding(1.dp),
                 verticalArrangement = Arrangement.Top
             ) {
+                // Quick Scores er kun relevant i Round Total-modus (det er ingen
+                // "vanlig rundetotal" å snarveie til når man taster kast for kast), og
+                // vises derfor kun når begge er sant. Radene får to ekstra kolonner
+                // (5 i stedet for 3) når snarveiene er med, som avgjør hjørneavrundingen
+                // via getCornerShape sitt totalInRow-argument.
+                val showQuickScores = quickScoresEnabled && !calculatorModeEnabled
+                val digitCols = if (showQuickScores) 5 else 3
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -633,6 +767,15 @@ fun GameScreen(
                         .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 26,
+                            onClick = { confirmRoundTotal(26) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(0, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
+                        )
+                    }
                     for (i in 1..3) {
                         NumberButton(
                             number = i,
@@ -640,7 +783,16 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-1,3, includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i else i-1, digitCols, includeBottom=true)
+                        )
+                    }
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 60,
+                            onClick = { confirmRoundTotal(60) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(4, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
                         )
                     }
                 }
@@ -652,6 +804,15 @@ fun GameScreen(
                         .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 41,
+                            onClick = { confirmRoundTotal(41) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(0, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
+                        )
+                    }
                     for (i in 4..6) {
                         NumberButton(
                             number = i,
@@ -659,7 +820,16 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-4,3,includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i-3 else i-4, digitCols, includeBottom=true)
+                        )
+                    }
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 85,
+                            onClick = { confirmRoundTotal(85) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(4, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
                         )
                     }
                 }
@@ -671,6 +841,15 @@ fun GameScreen(
                         .padding(0.5.dp),
                     horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 45,
+                            onClick = { confirmRoundTotal(45) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(0, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
+                        )
+                    }
                     for (i in 7..9) {
                         NumberButton(
                             number = i,
@@ -678,7 +857,16 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(i-7,3,includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i-6 else i-7, digitCols, includeBottom=true)
+                        )
+                    }
+                    if (showQuickScores) {
+                        NumberButton(
+                            number = 100,
+                            onClick = { confirmRoundTotal(100) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            shape = getCornerShape(4, digitCols, includeBottom = true),
+                            containerColor = Color(0xFF3A3A3A)
                         )
                     }
                 }
@@ -735,7 +923,7 @@ fun GameScreen(
                     Button(
                         onClick = {
                             if (isValidInput) {
-                                confirmThrow()
+                                if (calculatorModeEnabled) confirmThrow() else confirmRoundTotal()
                             }
                         },
                         modifier = Modifier
@@ -968,27 +1156,42 @@ fun NumberButton(
     number: Int,
     onClick: () -> Unit,
     modifier: Modifier,
-    shape: RoundedCornerShape = RoundedCornerShape(6.dp)
+    shape: RoundedCornerShape = RoundedCornerShape(6.dp),
+    // Litt mørkere enn vanlig for Quick Scores-snarveiene (26/41/45/60/85/100), slik at
+    // de skiller seg fra de vanlige sifferknappene uten å kopiere fargebruken i
+    // referanseappen rett av.
+    containerColor: Color = Color(0xFF505050)
 ) {
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
+
+    // Ett siffer (0-9) og en tresifret snarvei (f.eks. 100) deler samme knapp, men
+    // 100 ved 24sp rakk ikke plass i en av fem like brede kolonner og brøt til to
+    // linjer ("10" / "0"). Skaleres ned etter antall siffer i stedet.
+    val fontSize = when (number.toString().length) {
+        1 -> 24.sp
+        2 -> 22.sp
+        else -> 17.sp
+    }
 
     Button(
         onClick = onClick,
         modifier = modifier,
         shape = shape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF505050)
+            containerColor = containerColor
         ),
         border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
         interactionSource = interaction
     ) {
         Text(
             text = number.toString(),
-            fontSize = 24.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Black,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            color = Color.White
+            color = Color.White,
+            softWrap = false,
+            maxLines = 1
         )
     }
 }

@@ -51,6 +51,8 @@ fun GameSettingsScreen(
     var player2 by remember { mutableStateOf<String?>(null) }
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
+    var calculatorMode by remember { mutableStateOf(false) } // Standard: rundetotal
+    var quickScores by remember { mutableStateOf(false) } // Kun relevant nar calculatorMode er av
     var expandedPlayer1 by remember { mutableStateOf(false) } // Styrer om dropdown for spiller 1 er åpen
     var expandedPlayer2 by remember { mutableStateOf(false) }
     var showSamePlayerWarning by remember { mutableStateOf(false) }
@@ -489,6 +491,71 @@ fun GameSettingsScreen(
                             )
                         )
                     }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "Calculator Mode:",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                            // PÅ: dagens dart-for-dart-inntasting med 2x/3x-knapper.
+                            // AV: spilleren har allerede regnet ut summen selv og taster
+                            // inn hele rundens total i stedet, se GameEngine.applyRoundTotal.
+                            Text(
+                                "(Enter each throw instead of the round total)",
+                                fontSize = 11.sp,
+                                color = Color(0xFFAAAAAA)
+                            )
+                        }
+                        Switch(
+                            checked = calculatorMode,
+                            onCheckedChange = { calculatorMode = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFD84FF8),
+                                checkedTrackColor = Color(0x88C506D3)
+                            )
+                        )
+                    }
+
+                    // Quick Scores gir kun mening i Round Total-modus (det er ingen
+                    // "vanlig rundetotal" å snarveie til når man taster kast for kast),
+                    // så bryteren skjules helt - ikke bare deaktiveres - når Calculator
+                    // Mode er på, i stedet for å ligge der uvirksom og ta plass.
+                    if (!calculatorMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "Quick Scores:",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    "(Shortcut buttons for common round totals)",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFAAAAAA)
+                                )
+                            }
+                            Switch(
+                                checked = quickScores,
+                                onCheckedChange = { quickScores = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color(0xFFD84FF8),
+                                    checkedTrackColor = Color(0x88C506D3)
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
@@ -535,7 +602,7 @@ fun GameSettingsScreen(
                             val p2Name = player2 ?: "PLAYER 2"
                             // Alle innstillinger sendes som del av navigasjonsruten (ikke delt
                             // ViewModel-state), så GameScreen kan starte helt uavhengig
-                            navController.navigate("game/$doubleIn/$doubleOut/$p1Name/$p2Name")
+                            navController.navigate("game/$doubleIn/$doubleOut/$calculatorMode/$quickScores/$p1Name/$p2Name")
                         }
                     },
                 contentAlignment = Alignment.Center

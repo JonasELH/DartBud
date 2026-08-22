@@ -194,10 +194,12 @@ fun DartBudApp() {
             // argumenter i ruten (ikke via ViewModel), slik at de er en del av
             // navController sin backstack og overlever f.eks. prosessgjenoppretting.
             composable(
-                route = "game/{doubleIn}/{doubleOut}/{player1Name}/{player2Name}",
+                route = "game/{doubleIn}/{doubleOut}/{calculatorMode}/{quickScores}/{player1Name}/{player2Name}",
                 arguments = listOf(
                     navArgument("doubleIn") { type = NavType.BoolType },
                     navArgument("doubleOut") { type = NavType.BoolType },
+                    navArgument("calculatorMode") { type = NavType.BoolType },
+                    navArgument("quickScores") { type = NavType.BoolType },
                     navArgument("player1Name") { type = NavType.StringType },
                     navArgument("player2Name") { type = NavType.StringType }
                 ),
@@ -219,12 +221,16 @@ fun DartBudApp() {
                 // er markert som påkrevde typer over).
                 val doubleIn = backStackEntry.arguments?.getBoolean("doubleIn") ?: false
                 val doubleOut = backStackEntry.arguments?.getBoolean("doubleOut") ?: true
+                val calculatorMode = backStackEntry.arguments?.getBoolean("calculatorMode") ?: false
+                val quickScores = backStackEntry.arguments?.getBoolean("quickScores") ?: false
                 val player1Name = backStackEntry.arguments?.getString("player1Name") ?: "PLAYER 1"
                 val player2Name = backStackEntry.arguments?.getString("player2Name") ?: "PLAYER 2"
                 GameScreen(
                     navController = navController,
                     doubleInEnabled = doubleIn,
                     doubleOutEnabled = doubleOut,
+                    calculatorModeEnabled = calculatorMode,
+                    quickScoresEnabled = quickScores,
                     player1Name = player1Name,
                     player2Name = player2Name,
                     gameViewModel = gameViewModel,
