@@ -599,7 +599,6 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.06f)
-                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
                     .padding(1.dp),
                 horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
@@ -609,13 +608,20 @@ fun GameScreen(
                 Button(
                     onClick = { undoLastThrow() },
                     modifier = Modifier
-                        .weight(1f)
+                        // I Round Total-modus deler Undo raden kun med No Score (ikke
+                        // Double/Triple), og skal da være like stor som den - se
+                        // weight(2f) på No Score-knappen under.
+                        .weight(if (calculatorModeEnabled) 1f else 2f)
                         .fillMaxSize(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF505050)
                     ),
                     shape = RoundedCornerShape(6.dp),
-                    border = if (isUndoPressed) BorderStroke(3.dp, Color(0xFFB2073F)) else null,
+                    border = if (isUndoPressed) {
+                        BorderStroke(3.dp, Color(0xFFB2073F))
+                    } else {
+                        BorderStroke(1.5.dp, Color(0xEBF148E8))
+                    },
                     interactionSource = undoInteraction
                 ) {
                     Row(
@@ -701,6 +707,9 @@ fun GameScreen(
                     // Round Total-modus: Double/Triple gir ingen mening (det er ingen
                     // enkeltpil å multiplisere), så plassen deres blir én "No Score"-knapp -
                     // en snarvei for å taste inn 0 uten å måtte bruke tallpaden.
+                    // Luft mellom Undo og No Score, bredde tilsvarende én knapp.
+                    Spacer(modifier = Modifier.weight(1f))
+
                     val noScoreInteraction = remember { MutableInteractionSource() }
                     val isNoScorePressed by noScoreInteraction.collectIsPressedAsState()
 
@@ -710,10 +719,14 @@ fun GameScreen(
                             .weight(2f)
                             .fillMaxSize(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B2020)
+                            containerColor = Color(0xFF3A3A3A)
                         ),
                         shape = RoundedCornerShape(6.dp),
-                        border = if (isNoScorePressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+                        border = if (isNoScorePressed) {
+                            BorderStroke(3.dp, Color(0xFFFFD700))
+                        } else {
+                            BorderStroke(1.5.dp, Color(0xEBF148E8))
+                        },
                         interactionSource = noScoreInteraction
                     ) {
                         Text(
@@ -743,6 +756,11 @@ fun GameScreen(
                     else -> RoundedCornerShape(0.dp)
                 }
             }
+
+            // Liten luke her, ellers ligger Undo/No Score sin rosa kant og talltastaturets
+            // rosa bakgrunn rett inntil hverandre og smelter sammen til en tykk, ujevn
+            // dobbel-linje langs underkanten av Undo/No Score.
+            Spacer(modifier = Modifier.height(4.dp))
 
             Column(
                 modifier = Modifier
@@ -930,11 +948,11 @@ fun GameScreen(
                             .weight(1f)
                             .fillMaxSize(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (inputValue.isEmpty()) Color(0xFF4CAF50)
-                            else if (isValidInput) Color(0xFF4CAF50)
+                            containerColor = if (inputValue.isEmpty()) Color(0xFF388E3C)
+                            else if (isValidInput) Color(0xFF388E3C)
                             else Color(0xFFFF0000),
                             disabledContainerColor = if (!isValidInput && inputValue.isNotEmpty()) Color(0xFFFF0000)
-                            else Color(0xFF4CAF50)
+                            else Color(0xFF388E3C)
                         ),
                         shape = RoundedCornerShape(bottomEnd = 6.dp, bottomStart = 6.dp, topEnd = 6.dp),
                         border = if (isConfirmPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
@@ -1034,6 +1052,7 @@ fun PlayerCard(
                                         color = Color.White,
                                         modifier = Modifier
                                             .padding(end = 4.dp)
+                                            .offset(y = (-1).dp)
                                     )
                                 }
                                 Text(
