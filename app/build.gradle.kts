@@ -87,6 +87,11 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:20.7.0")
+    // play-services-auth drar med seg androidx.fragment:fragment:1.1.0 (utdatert, flagget
+    // av Play Console). Ingen kode i appen bruker Fragment selv (kun Compose Navigation),
+    // men en direkte, nyere avhengighet her tvinger Gradle til å velge den høyere
+    // versjonen overalt i grafen i stedet.
+    implementation("androidx.fragment:fragment:1.8.5")
 
     // For "logg-ut-knapp", i stedet for ExitToApp som strengt tatt er en Logg inn-knapp...
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
