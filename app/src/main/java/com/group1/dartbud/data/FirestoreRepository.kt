@@ -2,6 +2,7 @@ package com.group1.dartbud.data
 
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.PropertyName
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,16 @@ data class FirestorePlayerProfile(
     val profileId: String = "",
     val username: String = "",
     val email: String = "",
+    // Firestore utleder feltnavnet i dokumentet fra getteren, og for en Boolean
+    // som heter isPrimaryProfile blir getteren isPrimaryProfile() -> feltnavnet
+    // "primaryProfile". Ved lesing (toObject) leter mapperen etter et felt som
+    // heter "primaryProfile", finner ingen (backing-feltet heter isPrimaryProfile),
+    // logger "No setter/field for primaryProfile found" og lar verdien stå som
+    // default false - primærprofil-flagget gikk tapt ved synk fra skyen.
+    // @field:PropertyName knytter backing-feltet til samme navn som getteren
+    // allerede skriver, slik at dokumenter som allerede ligger i Firestore med
+    // nøkkelen "primaryProfile" leses riktig, og skrivingen er uendret.
+    @field:PropertyName("primaryProfile")
     val isPrimaryProfile: Boolean = false,
     val photoUrl: String? = null,
     val createdAt: Long = System.currentTimeMillis()
