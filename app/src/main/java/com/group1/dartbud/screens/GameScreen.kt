@@ -1095,7 +1095,7 @@ fun PlayerCard(
                                         color = Color.White,
                                         modifier = Modifier
                                             .padding(end = 4.dp)
-                                            .offset(y = (-1).dp)
+                                            .offset(y = (-0.5f).dp)
                                     )
                                 }
                                 Text(
@@ -1261,8 +1261,12 @@ fun NumberButton(
             softWrap = false,
             maxLines = 1,
             onTextLayout = { result ->
-                if (result.didOverflowWidth) {
-                    fontSize *= 0.9f
+                // 1sp av gangen i stedet for en prosentvis reduksjon - ellers skjøt
+                // krympingen langt forbi det som faktisk trengtes (f.eks. "100" endte
+                // synlig mindre enn de andre Quick Scores-tallene selv om den bare så
+                // vidt trengte å krympe litt).
+                if (result.didOverflowWidth && fontSize > 10.sp) {
+                    fontSize = (fontSize.value - 1f).sp
                 }
             }
         )
