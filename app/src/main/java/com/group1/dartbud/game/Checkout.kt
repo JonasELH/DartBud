@@ -134,6 +134,72 @@ fun calculateCheckout(score: Int): String {
     }
 }
 
+// Rekkefølgen doublene prøves i når vi leter etter alternative checkout-ruter - de mest
+// brukte/foretrukne doblene først (D20, D16, D12, D8 osv.), pluss Bull (=grønn bull,
+// teller som double-out) som egen utgangsdouble.
+private val preferredCheckoutDoubles = listOf(40, 32, 16, 8, 20, 24, 36, 4, 12, 28, 2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 50)
+private fun checkoutDoubleLabel(target: Int) = if (target == 50) "Bull" else "D${target / 2}"
+
+// "Store" scoringspiler - tripler og bull - sortert med de mest trente/høyeste verdiene
+// først, siden det er slik spillere faktisk velger rute (T20 og Bull er standardkastene).
+private val bigScoringDarts: List<Pair<Int, String>> =
+    listOf(60 to "T20", 50 to "Bull", 57 to "T19", 54 to "T18", 51 to "T17", 48 to "T16",
+        45 to "T15", 42 to "T14", 39 to "T13", 36 to "T12", 33 to "T11", 30 to "T10",
+        27 to "T9", 24 to "T8", 21 to "T7", 18 to "T6", 15 to "T5", 12 to "T4",
+        9 to "T3", 6 to "T2", 3 to "T1")
+
+// "Små" scoringspiler - enkeltfelt 1-20, pluss ytre bull (25).
+private val smallScoringDarts: List<Pair<Int, String>> =
+    listOf(25 to "25") + (20 downTo 1).map { it to "$it" }
+
+private val allScoringDarts = bigScoringDarts + smallScoringDarts
+
+// Genererer alternative gyldige checkout-ruter for en score, i tillegg til forslaget fra
+// calculateCheckout(). Brukes av "veksle mellom utganger"-knappen i spillskjermen.
+//
+// Går gjennom doublene i preferredCheckoutDoubles - altså de spillere faktisk liker å
+// avslutte på - og prøver for hver av dem å finne én eller to scoringspiler (trippel,
+// bull, enkeltfelt) som til sammen tar resten av scoren. Dette speiler hvordan ekte
+// checkout-tabeller er bygget opp (velg en trygg double, finn så veien dit), og gjør at
+// kjente ruter som "T20 T16 D12" for 132 faktisk dukker opp, i stedet for hvilken som
+// helst matematisk gyldig men lite brukt kombinasjon.
+//
+// Returnerer bare [primary] (ett element) hvis scoren ikke er mulig å avslutte på, eller
+// hvis det ikke finnes noen reell alternativ rute.
+fun calculateCheckoutAlternatives(score: Int, maxAlternatives: Int = 4): List<String> {
+    val primary = calculateCheckout(score)
+    if (primary == "No out shot" || primary.isBlank()) return listOf(primary)
+
+    val alternatives = linkedSetOf(primary)
+    fun isFull() = alternatives.size > maxAlternatives
+
+    for (target in preferredCheckoutDoubles) {
+        if (isFull()) break
+        val remainder = score - target
+        if (remainder <= 0) continue
+
+        // Ett kast igjen etter doublen: finnes det en scoringspil verdt nøyaktig remainder?
+        allScoringDarts.firstOrNull { it.first == remainder }?.let { (_, label) ->
+            alternatives.add("$label ${checkoutDoubleLabel(target)}")
+        }
+        if (isFull()) break
+
+        // To kast igjen etter doublen: finn en stor pil + en (stor eller liten) pil som
+        // til sammen gir remainder.
+        outer@ for ((v1, l1) in bigScoringDarts) {
+            if (v1 >= remainder) continue
+            for ((v2, l2) in allScoringDarts) {
+                if (v1 + v2 == remainder) {
+                    alternatives.add("$l1 $l2 ${checkoutDoubleLabel(target)}")
+                    break@outer
+                }
+            }
+        }
+    }
+
+    return alternatives.take(maxAlternatives + 1).toList()
+}
+
 // Regner ut en to-kast-utgang for scorer som ikke står i den håndskrevne
 // checkout-tabellen: finn et enkeltkast (1-20) som etterlater en gyldig double.
 // Doublene prøves i den rekkefølgen spillere faktisk sikter på dem - D16 og D20

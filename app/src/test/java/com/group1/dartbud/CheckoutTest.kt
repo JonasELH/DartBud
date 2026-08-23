@@ -1,6 +1,7 @@
 package com.group1.dartbud
 
 import com.group1.dartbud.game.calculateCheckout
+import com.group1.dartbud.game.calculateCheckoutAlternatives
 import com.group1.dartbud.game.genericCheckout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -128,5 +129,58 @@ class CheckoutTest {
     fun `over 170 kan ikke avsluttes`() {
         assertEquals("No out shot", calculateCheckout(171))
         assertEquals("No out shot", calculateCheckout(501))
+    }
+
+    // ---------- calculateCheckoutAlternatives - "veksle mellom utganger"-knappen ----------
+
+    @Test
+    fun `alternativer gir kun No out shot for umulige scorer`() {
+        assertEquals(listOf("No out shot"), calculateCheckoutAlternatives(169))
+        assertEquals(listOf("No out shot"), calculateCheckoutAlternatives(501))
+    }
+
+    @Test
+    fun `forste alternativ er alltid samme som calculateCheckout`() {
+        for (score in listOf(2, 32, 41, 60, 100, 132, 170)) {
+            assertEquals(calculateCheckout(score), calculateCheckoutAlternatives(score).first())
+        }
+    }
+
+    @Test
+    fun `alle alternativer summerer til riktig score og avslutter pa double eller bull`() {
+        val umulige = setOf(159, 162, 163, 165, 166, 168, 169)
+        for (score in 2..170) {
+            if (score in umulige) continue
+            for (forslag in calculateCheckoutAlternatives(score)) {
+                assertEquals("Feil sum for $score ($forslag)", score, sumOf(forslag))
+                val siste = forslag.split(" ").last()
+                assertTrue(
+                    "$score avslutter ikke pa double: $forslag",
+                    siste.startsWith("D") || siste == "Bull"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `alternativer er aldri flere enn maxAlternativer pluss primaeren`() {
+        for (score in 2..170) {
+            assertTrue(calculateCheckoutAlternatives(score, maxAlternatives = 2).size <= 3)
+        }
+    }
+
+    @Test
+    fun `132 har T20 T16 D12 som et av alternativene`() {
+        assertTrue(
+            "Forventet T20 T16 D12 blant alternativene for 132: ${calculateCheckoutAlternatives(132)}",
+            "T20 T16 D12" in calculateCheckoutAlternatives(132)
+        )
+    }
+
+    @Test
+    fun `32 har et reelt alternativ til ren double`() {
+        val alternativer = calculateCheckoutAlternatives(32)
+        assertEquals("D16", alternativer.first())
+        assertTrue("Forventet flere enn ett forslag for 32: $alternativer", alternativer.size > 1)
     }
 }

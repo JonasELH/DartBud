@@ -35,6 +35,7 @@ import com.group1.dartbud.game.GameEngine
 import com.group1.dartbud.game.GameState
 import com.group1.dartbud.game.Player
 import com.group1.dartbud.game.calculateCheckout
+import com.group1.dartbud.game.calculateCheckoutAlternatives
 import com.group1.dartbud.game.isValidThrowInput
 
 
@@ -119,6 +120,18 @@ fun GameScreen(
     // vet antall piler (trengs for et riktig snitt).
     var showCheckoutDartsDialog by remember { mutableStateOf(false) }
     var pendingRoundTotal by remember { mutableStateOf(0) }
+
+    // "Veksle mellom utganger"-knappen (kun Round Total-modus): hvilket alternativ i
+    // calculateCheckoutAlternatives() som vises for den AKTIVE spilleren akkurat nå.
+    // Nullstilles hver gang det er en ny score å vise utgang for - ellers kunne man
+    // f.eks. stå igjen på alternativ 2 av 3 fra forrige runde på en helt annen score.
+    var checkoutAltIndex by remember { mutableStateOf(0) }
+    LaunchedEffect(gameState.currentPlayer, gameState.activePlayer.score) {
+        checkoutAltIndex = 0
+    }
+    val activeCheckoutAlternatives = calculateCheckoutAlternatives(gameState.activePlayer.score)
+    val canCycleCheckout = activeCheckoutAlternatives.size > 1
+    val activeCheckoutSuggestion = activeCheckoutAlternatives[checkoutAltIndex % activeCheckoutAlternatives.size]
 
     // Verdien det aktuelle tallpad-inputet representerer, med multiplikator tatt hensyn til
     val currentInputScore = (inputValue.toIntOrNull() ?: 0) * multiplier
@@ -503,7 +516,7 @@ fun GameScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    checkout = calculateCheckout(player1.score),
+                    checkout = if (currentPlayer == 1) activeCheckoutSuggestion else calculateCheckout(player1.score),
                     roundNumber = overallRound
                 )
 
@@ -514,7 +527,7 @@ fun GameScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    checkout = calculateCheckout(player2.score),
+                    checkout = if (currentPlayer == 2) activeCheckoutSuggestion else calculateCheckout(player2.score),
                     roundNumber = overallRound
                 )
             }
@@ -707,8 +720,38 @@ fun GameScreen(
                     // Round Total-modus: Double/Triple gir ingen mening (det er ingen
                     // enkeltpil å multiplisere), så plassen deres blir én "No Score"-knapp -
                     // en snarvei for å taste inn 0 uten å måtte bruke tallpaden.
-                    // Luft mellom Undo og No Score, bredde tilsvarende én knapp.
-                    Spacer(modifier = Modifier.weight(1f))
+
+                    // "Veksle mellom utganger"-knappen: bytter hvilket checkout-forslag som
+                    // vises for DEN AKTIVE spilleren (se activeCheckoutSuggestion). Grået ut
+                    // og ikke trykkbar når det ikke finnes noen reell alternativ rute.
+                    val cycleCheckoutInteraction = remember { MutableInteractionSource() }
+                    val isCycleCheckoutPressed by cycleCheckoutInteraction.collectIsPressedAsState()
+
+                    Button(
+                        onClick = { checkoutAltIndex++ },
+                        enabled = canCycleCheckout,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3A3A3A),
+                            disabledContainerColor = Color(0xFF2A2A2A)
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        border = if (isCycleCheckoutPressed) {
+                            BorderStroke(3.dp, Color(0xFFFFD700))
+                        } else {
+                            BorderStroke(1.5.dp, Color(0xEBF148E8).copy(alpha = if (canCycleCheckout) 1f else 0.35f))
+                        },
+                        interactionSource = cycleCheckoutInteraction
+                    ) {
+                        Text(
+                            "⇌",
+                            fontSize = (actionButtonFontSize.value * 1.6f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (canCycleCheckout) Color.White else Color(0xFF6B6B6B)
+                        )
+                    }
 
                     val noScoreInteraction = remember { MutableInteractionSource() }
                     val isNoScorePressed by noScoreInteraction.collectIsPressedAsState()
