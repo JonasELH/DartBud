@@ -22,7 +22,14 @@ data class Player(
     val average: Double = 0.0,
     val roundsPlayed: Int = 0,
     val dartsThrown: Int = 0,
-    val hasScored: Boolean = false // Har spilleren åpnet scoringen (double-in)?
+    val hasScored: Boolean = false, // Har spilleren åpnet scoringen (double-in)?
+    // Poeng scoret i legs som ER FERDIGSPILT i denne kampen. Statistikk (snitt,
+    // høyeste score, piler, runder) gjelder hele kampen, ikke bare den legen som
+    // pågår - det er slik dart faktisk rapporteres. Snittet regnes derfor som
+    // (dette + poengene i inneværende leg) / dartsThrown, se recalculateAverage.
+    // Poengene i inneværende leg utledes fortsatt av 501 - score, slik at bust
+    // (som ruller score tilbake til turStart) automatisk trekker fra igjen.
+    val pointsScoredPreviousLegs: Int = 0
 )
 
 // Melding som skal vises til spilleren etter et kast (bust, eller "ikke åpnet enda").
@@ -52,21 +59,54 @@ data class GameState(
     val player1RoundHistory: List<Int> = emptyList(),
     val player2RoundHistory: List<Int> = emptyList(),
     val history: List<GameState> = emptyList(),
-    val winnerNumber: Int = 0, // 0 = ingen vinner enda
-    val message: GameMessage? = null
+    val winnerNumber: Int = 0, // 0 = ingen har vunnet DENNE LEGEN enda
+    val message: GameMessage? = null,
+    // Kampen kan bestå av flere legs (best av 1/3/5/7/9, satt i Game Settings).
+    // legStartingPlayer holdes fra GameState.new() og endres ALDRI av endTurn() -
+    // trengs for å alternere hvem som kaster først fra leg til leg, uavhengig av
+    // hvem som vant forrige leg (currentPlayer sier hvem sin tur det er NÅ, ikke
+    // hvem som startet legen).
+    val legStartingPlayer: Int = 1,
+    val player1LegsWon: Int = 0,
+    val player2LegsWon: Int = 0,
+    val totalLegsInMatch: Int = 1
 ) {
     val activePlayer: Player get() = if (currentPlayer == 1) player1 else player2
+
+    // Vinneren av DENNE LEGEN - kan være satt selv om kampen fortsetter (flere legs).
     val winner: Player? get() = when (winnerNumber) {
         1 -> player1
         2 -> player2
         else -> null
     }
 
+    // Antall legs én spiller må vinne for å vinne HELE kampen - flertallet av
+    // totalLegsInMatch (best av 3 -> 2, best av 5 -> 3, osv.)
+    val legsNeededToWinMatch: Int get() = totalLegsInMatch / 2 + 1
+
+    // 0 = kampen er ikke avgjort enda, selv om en enkelt leg nettopp ble vunnet.
+    val matchWinnerNumber: Int get() = when {
+        player1LegsWon >= legsNeededToWinMatch -> 1
+        player2LegsWon >= legsNeededToWinMatch -> 2
+        else -> 0
+    }
+
     companion object {
-        fun new(player1Name: String, player2Name: String, startingPlayer: Int = 1) = GameState(
+        fun new(
+            player1Name: String,
+            player2Name: String,
+            startingPlayer: Int = 1,
+            player1LegsWon: Int = 0,
+            player2LegsWon: Int = 0,
+            totalLegsInMatch: Int = 1
+        ) = GameState(
             player1 = Player(player1Name),
             player2 = Player(player2Name),
-            currentPlayer = startingPlayer
+            currentPlayer = startingPlayer,
+            legStartingPlayer = startingPlayer,
+            player1LegsWon = player1LegsWon,
+            player2LegsWon = player2LegsWon,
+            totalLegsInMatch = totalLegsInMatch
         )
     }
 }
@@ -119,15 +159,29 @@ class GameEngine(
 
     /**
      * Gjennomsnittlig poengsum per tre kast ("three-dart average"), den vanlige måten
-     * å måle en dartspillers nivå på. 501 - score = poeng scoret så langt.
+     * å måle en dartspillers nivå på.
+     *
+     * Regnes over HELE kampen, ikke bare den legen som pågår: poeng fra ferdigspilte
+     * legs ligger i pointsScoredPreviousLegs, og poengene i inneværende leg er
+     * 501 - score. Begge deler deles på dartsThrown, som også teller på tvers av legs.
      */
     private fun recalculateAverage(player: Player): Double {
         if (player.dartsThrown == 0) return 0.0
-        return ((501 - player.score).toDouble() / player.dartsThrown) * 3
+        val totalPoints = player.pointsScoredPreviousLegs + (501 - player.score)
+        return (totalPoints.toDouble() / player.dartsThrown) * 3
     }
 
     private fun withPlayer(state: GameState, player: Player): GameState =
         if (state.currentPlayer == 1) state.copy(player1 = player) else state.copy(player2 = player)
+
+    // Setter winnerNumber for DENNE LEGEN og teller den samtidig mot kampens legs-
+    // stilling, atomisk - unngår en egen "husk å registrere leg-resultatet"-runde
+    // som lett kunne blitt kalt to ganger (eller glemt) ved rekomponering i UI-laget.
+    private fun recordLegWin(state: GameState, winner: Int): GameState = state.copy(
+        winnerNumber = winner,
+        player1LegsWon = state.player1LegsWon + if (winner == 1) 1 else 0,
+        player2LegsWon = state.player2LegsWon + if (winner == 2) 1 else 0
+    )
 
     /**
      * Avslutter den aktive spillerens tur: bytter spiller, nullstiller rundens kast og
@@ -235,8 +289,8 @@ class GameEngine(
         }
 
         return when {
-            // Kampen er vunnet - kan skje på hvilket som helst av de tre kastene
-            newScore == 0 -> next.copy(winnerNumber = next.currentPlayer)
+            // Legen er vunnet - kan skje på hvilket som helst av de tre kastene
+            newScore == 0 -> recordLegWin(next, next.currentPlayer)
             next.currentThrow == 3 -> endTurn(next)
             else -> next.copy(currentThrow = next.currentThrow + 1)
         }
@@ -309,7 +363,7 @@ class GameEngine(
             next.copy(player2RoundHistory = next.player2RoundHistory + total)
         }
 
-        return if (isCheckout) next.copy(winnerNumber = next.currentPlayer) else endTurn(next)
+        return if (isCheckout) recordLegWin(next, next.currentPlayer) else endTurn(next)
     }
 
     /**
@@ -321,7 +375,49 @@ class GameEngine(
         return previous.copy(history = state.history.dropLast(1))
     }
 
-    /** Ny kamp med samme spillere. Motsatt spiller starter, som i en vanlig revansje. */
+    /**
+     * Starter neste leg i en kamp med flere legs (best av 3/5/7/9): friske 501-
+     * poengsummer for begge, men legs-stillingen og formatet på kampen (totalLegsInMatch)
+     * tas med videre. Hvem som kaster først alternerer strengt fra leg til leg etter
+     * den offisielle regelen (uavhengig av hvem som vant forrige leg) - se
+     * legStartingPlayer på GameState.
+     */
+    fun startNextLeg(state: GameState): GameState {
+        val nextStartingPlayer = if (state.legStartingPlayer == 1) 2 else 1
+        return GameState(
+            player1 = carryStatsIntoNextLeg(state.player1),
+            player2 = carryStatsIntoNextLeg(state.player2),
+            currentPlayer = nextStartingPlayer,
+            legStartingPlayer = nextStartingPlayer,
+            player1LegsWon = state.player1LegsWon,
+            player2LegsWon = state.player2LegsWon,
+            totalLegsInMatch = state.totalLegsInMatch
+        )
+    }
+
+    /**
+     * Nullstiller det som hører til én enkelt leg (poengsum, double-in-status), men tar
+     * med all statistikk videre: snitt, høyeste score, piler og runder gjelder hele
+     * kampen. Poengene spilleren rakk å score i legen som nettopp ble ferdig
+     * (501 - sluttscore) legges til pointsScoredPreviousLegs, slik at snittet fortsatt
+     * kan regnes ut riktig når score nå settes tilbake til 501.
+     */
+    private fun carryStatsIntoNextLeg(player: Player) = player.copy(
+        score = 501,
+        lastThrow = 0,
+        hasScored = false,
+        pointsScoredPreviousLegs = player.pointsScoredPreviousLegs + (501 - player.score)
+    )
+
+    /**
+     * Ny kamp med samme spillere. Motsatt spiller starter, som i en vanlig revansje.
+     * Legs-stillingen nullstilles (ny kamp), men formatet (best av X) beholdes.
+     */
     fun rematch(state: GameState, startingPlayer: Int): GameState =
-        GameState.new(state.player1.name, state.player2.name, startingPlayer)
+        GameState.new(
+            player1Name = state.player1.name,
+            player2Name = state.player2.name,
+            startingPlayer = startingPlayer,
+            totalLegsInMatch = state.totalLegsInMatch
+        )
 }

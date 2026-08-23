@@ -54,6 +54,7 @@ fun GameScreen(
     doubleOutEnabled: Boolean = true, // Krever double (eller bullseye) for å avslutte kampen
     calculatorModeEnabled: Boolean = false, // PÅ: dart for dart. AV: tast inn hele rundetotalen
     quickScoresEnabled: Boolean = false, // Snarveisknapper for vanlige rundetotaler (26/41/45/60/85/100)
+    totalLegs: Int = 1, // Kampformat: best av 1/3/5/7/9 legs
     player1Name: String = "PLAYER 1",
     player2Name: String = "PLAYER 2",
     gameViewModel: GameViewModel = viewModel(),
@@ -88,7 +89,9 @@ fun GameScreen(
     val engine = remember(doubleInEnabled, doubleOutEnabled) {
         GameEngine(doubleInEnabled = doubleInEnabled, doubleOutEnabled = doubleOutEnabled)
     }
-    var gameState by remember { mutableStateOf(GameState.new(player1Name, player2Name)) }
+    var gameState by remember {
+        mutableStateOf(GameState.new(player1Name, player2Name, totalLegsInMatch = totalLegs))
+    }
     var firstPlayer by remember { mutableStateOf(1) } // Brukes ved rematch for å bytte hvem som starter
 
     // Utpakking av tilstanden, slik at UI-koden under leser de samme navnene som før
@@ -101,7 +104,15 @@ fun GameScreen(
     val throw2 = gameState.throw2
     val throw3 = gameState.throw3
     val winner = gameState.winner
-    val showWinDialog = gameState.winnerNumber != 0
+    // Legen kan være vunnet (winnerNumber != 0) uten at KAMPEN er ferdig, hvis
+    // totalLegsInMatch > 1 (best av 3/5/7/9). Skiller derfor mellom to dialoger:
+    // en kort "Leg won, ready for next leg?"-dialog mens kampen fortsetter, og den
+    // vanlige vinner-dialogen først når flertallet av legs faktisk er vunnet - se
+    // matchWinnerNumber på GameState.
+    val legJustWon = gameState.winnerNumber != 0
+    val matchIsWon = gameState.matchWinnerNumber != 0
+    val showLegWinDialog = legJustWon && !matchIsWon
+    val showWinDialog = matchIsWon
 
     // Samme dialog brukes til bust og til "kastet ga ingen poeng enda" ved double-in,
     // så tittelen må følge med på hvilken av de to det er.
@@ -220,9 +231,12 @@ fun GameScreen(
         gameViewModel.saveGame(
             player1Id = p1.playerId,
             player2Id = p2.playerId,
-            winnerId = if (gameState.winnerNumber == 1) p1.playerId else p2.playerId,
+            winnerId = if (gameState.matchWinnerNumber == 1) p1.playerId else p2.playerId,
             doubleIn = doubleInEnabled,
             doubleOut = doubleOutEnabled,
+            player1LegsWon = gameState.player1LegsWon,
+            player2LegsWon = gameState.player2LegsWon,
+            totalLegsInMatch = gameState.totalLegsInMatch,
             player1Stats = GameStatsEntity(
                 gameId = 0,
                 playerId = p1.playerId,
@@ -251,6 +265,13 @@ fun GameScreen(
     fun startRematch() {
         firstPlayer = if (firstPlayer == 1) 2 else 1
         gameState = engine.rematch(gameState, firstPlayer)
+        clearInput()
+    }
+
+    // "Ready for next leg?"-dialogens OK-knapp: friske 501-poengsummer, men legs-
+    // stillingen (og kampens format) tas med videre - se GameEngine.startNextLeg.
+    fun startNextLeg() {
+        gameState = engine.startNextLeg(gameState)
         clearInput()
     }
 
@@ -358,6 +379,64 @@ fun GameScreen(
         )
     }
 
+    // Vises når en leg er vunnet, men kampen fortsetter (best av 3/5/7/9 og ingen har
+    // nådd flertallet av legs enda). Kort dialog, kun én OK-knapp - motsatt av
+    // vinner-dialogen under er dette ikke et endelig stoppunkt, bare en pause mellom
+    // to legs.
+    if (showLegWinDialog && winner != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text(
+                    "Leg won!",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    textAlign = TextAlign.Center,
+                    color = Color.White,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "${winner!!.name} wins the leg!",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        color = Color.White
+                    )
+                    Text(
+                        "Leg score: ${gameState.player1LegsWon} - ${gameState.player2LegsWon}",
+                        textAlign = TextAlign.Center,
+                        color = Color.White
+                    )
+                    Text(
+                        "Ready for next leg?",
+                        textAlign = TextAlign.Center,
+                        color = Color.White
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { startNextLeg() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF388E3C)
+                    )
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = { },
+            containerColor = Color(0xDD000000)
+        )
+    }
+
     // Vises når en spiller vinner (score nøyaktig 0 med gyldig checkout). Har ingen
     // "dismiss" (onDismissRequest er tom) - spilleren MÅ velge Main Menu eller Rematch,
     // det finnes ingen vei tilbake til selve spillet herfra.
@@ -392,6 +471,15 @@ fun GameScreen(
                         textAlign = TextAlign.Center,
                         color = Color.White
                     )
+                    // Kun relevant for kamper med flere legs (best av 3/5/7/9) - et
+                    // enkelt-leg-format har ingenting å vise her utover selve seieren.
+                    if (gameState.totalLegsInMatch > 1) {
+                        Text(
+                            "Legs: ${gameState.player1LegsWon} - ${gameState.player2LegsWon}",
+                            textAlign = TextAlign.Center,
+                            color = Color.White
+                        )
+                    }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.3f))
                     Text(
                         "Average: ${String.format("%.1f", winner!!.average)}",
@@ -517,7 +605,8 @@ fun GameScreen(
                         .weight(1f)
                         .fillMaxHeight(),
                     checkout = if (currentPlayer == 1) activeCheckoutSuggestion else calculateCheckout(player1.score),
-                    roundNumber = overallRound
+                    roundNumber = overallRound,
+                    legsWon = if (gameState.totalLegsInMatch > 1) gameState.player1LegsWon else null
                 )
 
                 PlayerCard(
@@ -528,7 +617,8 @@ fun GameScreen(
                         .weight(1f)
                         .fillMaxHeight(),
                     checkout = if (currentPlayer == 2) activeCheckoutSuggestion else calculateCheckout(player2.score),
-                    roundNumber = overallRound
+                    roundNumber = overallRound,
+                    legsWon = if (gameState.totalLegsInMatch > 1) gameState.player2LegsWon else null
                 )
             }
 
@@ -1026,6 +1116,9 @@ fun PlayerCard(
     checkout: String,
     roundNumber: Int,
     currentRoundTotal: Int = 0,
+    // Antall legs spilleren har vunnet i kampen. null i kamper som kun er én leg -
+    // da finnes det ingen stilling å vise, og raden droppes helt.
+    legsWon: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1083,27 +1176,47 @@ fun PlayerCard(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                if (isActive) {
+                            // Navn og legs-stilling ligger i en egen Column her, ikke som
+                            // hvert sitt barn av Column-en utenfor - den bruker SpaceBetween
+                            // til å fordele topp/score/bunn, og et fjerde barn ville brutt
+                            // den fordelingen.
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    if (isActive) {
+                                        Text(
+                                            text = "→",
+                                            // Holder samme forhold til navnet som før (ca. 0,7x)
+                                            fontSize = (fontSize.value * 0.32f).sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            modifier = Modifier
+                                                .padding(end = 4.dp)
+                                                .offset(y = (-0.5f).dp)
+                                        )
+                                    }
                                     Text(
-                                        text = "→",
-                                        fontSize = (fontSize.value * 0.25f).sp,
+                                        // 0,45 og ikke 0,35: fontSize er allerede kappet på
+                                        // 32sp, så navnet lå på ~11sp - mindre enn resten av
+                                        // teksten på skjermen, og for spinkelt mot LEGS-linjen
+                                        // under.
+                                        text = player.name,
+                                        fontSize = (fontSize.value * 0.45f).sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        modifier = Modifier
-                                            .padding(end = 4.dp)
-                                            .offset(y = (-0.5f).dp)
+                                        color = Color.White
                                     )
                                 }
-                                Text(
-                                    text = player.name,
-                                    fontSize = (fontSize.value * 0.35f).sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
+                                if (legsWon != null) {
+                                    Text(
+                                        text = "LEGS: $legsWon",
+                                        fontSize = (fontSize.value * 0.28f).sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFE7D325),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
 

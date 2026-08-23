@@ -208,6 +208,23 @@ fun GameHistoryCard(
                 )
             }
 
+            // Legg-resultat - kun relevant for kamper med flere legs (best av 3/5/7/9).
+            // Enkelt-leg-kamper (inkludert alle spilt før dette fantes) har
+            // totalLegsInMatch=1 og viser derfor ikke denne raden.
+            if (game.totalLegsInMatch > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "Legs: ${game.player1LegsWon} - ${game.player2LegsWon}",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))

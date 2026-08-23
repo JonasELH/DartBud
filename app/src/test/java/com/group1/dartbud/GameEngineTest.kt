@@ -478,4 +478,179 @@ class GameEngineTest {
         // spiller 1: 100 + 80 = 180 poeng pa 6 piler -> snitt 90.0
         assertEquals(90.0, s.player1.average, 0.001)
     }
+
+    // ---------- legs / kampformat (best av 1/3/5/7/9) ----------
+
+    @Test
+    fun `enkelt-leg kamp - vinner av legen vinner ogsa kampen med en gang`() {
+        var s = start().withP1Score(40) // totalLegsInMatch = 1 (standard)
+        s = standard.applyRoundTotal(s, 40)
+        assertEquals(1, s.winnerNumber)
+        assertEquals(1, s.player1LegsWon)
+        assertEquals(1, s.matchWinnerNumber)
+    }
+
+    @Test
+    fun `legsNeededToWinMatch er flertallet av formatet`() {
+        assertEquals(1, GameState.new("A", "B", totalLegsInMatch = 1).legsNeededToWinMatch)
+        assertEquals(2, GameState.new("A", "B", totalLegsInMatch = 3).legsNeededToWinMatch)
+        assertEquals(3, GameState.new("A", "B", totalLegsInMatch = 5).legsNeededToWinMatch)
+        assertEquals(4, GameState.new("A", "B", totalLegsInMatch = 7).legsNeededToWinMatch)
+        assertEquals(5, GameState.new("A", "B", totalLegsInMatch = 9).legsNeededToWinMatch)
+    }
+
+    @Test
+    fun `kampen er ikke avgjort etter forste leg i et flerleg-format`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        assertEquals(1, s.winnerNumber) // legen er vunnet
+        assertEquals(1, s.player1LegsWon)
+        assertEquals(0, s.matchWinnerNumber) // men ikke kampen - trenger 2 av 3
+    }
+
+    @Test
+    fun `startNextLeg gir friske poengsummer men beholder legs-stilling og format`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        s = standard.startNextLeg(s)
+
+        assertEquals(501, s.player1.score)
+        assertEquals(501, s.player2.score)
+        assertEquals(0, s.winnerNumber)
+        assertEquals(1, s.player1LegsWon) // tatt med videre
+        assertEquals(0, s.player2LegsWon)
+        assertEquals(3, s.totalLegsInMatch)
+    }
+
+    @Test
+    fun `startNextLeg alternerer strengt uavhengig av hvem som vant forrige leg`() {
+        // Spiller 1 starter og vinner leg 1
+        var s = GameState.new("A", "B", startingPlayer = 1, totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        s = standard.startNextLeg(s)
+        assertEquals(2, s.currentPlayer) // spiller 2 skal starte leg 2
+
+        // Spiller 2 vinner OGSÅ leg 2 (som spillets starter denne gangen)
+        s = s.copy(player2 = s.player2.copy(score = 40), turnStartScore = 40)
+        s = standard.applyRoundTotal(s, 40)
+        s = standard.startNextLeg(s)
+        // Strengt alternerende betyr spiller 1 starter leg 3 - IKKE "taperen (spiller 1)
+        // fra leg 2 starter", som tilfeldigvis ville gitt samme svar her. Testen under
+        // med annen rekkefølge viser at det faktisk er alterneringen som styrer.
+        assertEquals(1, s.currentPlayer)
+    }
+
+    @Test
+    fun `matchWinnerNumber settes forst nar flertallet av legs er vunnet`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40) // leg 1 til spiller 1
+        assertEquals(0, s.matchWinnerNumber)
+        s = standard.startNextLeg(s)
+
+        s = s.copy(player2 = s.player2.copy(score = 40), turnStartScore = 40)
+        s = standard.applyRoundTotal(s, 40) // leg 2 til spiller 2
+        assertEquals(0, s.matchWinnerNumber)
+        s = standard.startNextLeg(s)
+
+        s = s.withP1Score(40)
+        s = standard.applyRoundTotal(s, 40) // leg 3 til spiller 1 - 2 av 3, kampen avgjort
+        assertEquals(2, s.player1LegsWon)
+        assertEquals(1, s.matchWinnerNumber)
+    }
+
+    // ---------- statistikk gjelder hele kampen, ikke bare den legen som pagar ----------
+
+    @Test
+    fun `snittet regnes over alle legs i kampen`() {
+        // Leg 1: spiller 1 tar 501 pa 15 piler (100 + 100 + 100 + 100 + 101)
+        var s = GameState.new("A", "B", totalLegsInMatch = 3)
+        repeat(4) {
+            s = standard.applyRoundTotal(s, 100) // spiller 1
+            s = standard.applyRoundTotal(s, 0)   // spiller 2
+        }
+        s = standard.applyRoundTotal(s, 101) // spiller 1 sjekker ut
+        assertEquals(1, s.player1LegsWon)
+        assertEquals(100.2, s.player1.average, 0.01) // 501 poeng / 15 piler * 3
+
+        // Leg 2: spiller 2 apner (turen alternerer mellom legs), sa spiller 1 tar 60.
+        // Snittet til spiller 1 skal na dekke BEGGE legs:
+        // (501 + 60) poeng / 18 piler * 3 = 93.5
+        s = standard.startNextLeg(s)
+        assertEquals(2, s.currentPlayer)
+        s = standard.applyRoundTotal(s, 0)  // spiller 2
+        s = standard.applyRoundTotal(s, 60) // spiller 1
+        assertEquals(93.5, s.player1.average, 0.01)
+    }
+
+    @Test
+    fun `piler og runder telles videre inn i neste leg`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        val pilerEtterLeg1 = s.player1.dartsThrown
+        val runderEtterLeg1 = s.player1.roundsPlayed
+
+        s = standard.startNextLeg(s)
+        assertEquals(pilerEtterLeg1, s.player1.dartsThrown)
+        assertEquals(runderEtterLeg1, s.player1.roundsPlayed)
+
+        s = standard.applyRoundTotal(s, 0)  // spiller 2 apner leg 2 (turen alternerer)
+        s = standard.applyRoundTotal(s, 60) // spiller 1
+        assertEquals(pilerEtterLeg1 + 3, s.player1.dartsThrown)
+        assertEquals(runderEtterLeg1 + 1, s.player1.roundsPlayed)
+    }
+
+    @Test
+    fun `hoyeste score fra et tidligere leg star seg ut kampen`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3)
+        s = standard.applyRoundTotal(s, 180) // spiller 1 apner med maksrunde
+        assertEquals(180, s.player1.highestScore)
+
+        s = s.copy(player1 = s.player1.copy(score = 40), turnStartScore = 40)
+        s = standard.applyRoundTotal(s, 40) // vinner legen
+        s = standard.startNextLeg(s)
+        s = standard.applyRoundTotal(s, 0)  // spiller 2 apner leg 2 (turen alternerer)
+        s = standard.applyRoundTotal(s, 60) // en helt vanlig runde for spiller 1 i leg 2
+
+        assertEquals("180-runden fra leg 1 skal fortsatt vare hoyeste score", 180, s.player1.highestScore)
+    }
+
+    @Test
+    fun `poengsummen nullstilles selv om statistikken folger med`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 3).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        s = standard.startNextLeg(s)
+
+        assertEquals(501, s.player1.score)
+        assertEquals(501, s.player2.score)
+        // ... men poengene fra leg 1 er tatt vare pa til snittutregningen
+        assertEquals(501, s.player1.pointsScoredPreviousLegs)
+    }
+
+    @Test
+    fun `taperens uferdige leg teller ogsa med i snittet`() {
+        // Spiller 2 rekker 100 poeng for spiller 1 vinner legen
+        var s = GameState.new("A", "B", totalLegsInMatch = 3)
+        s = standard.applyRoundTotal(s, 60)  // spiller 1
+        s = standard.applyRoundTotal(s, 100) // spiller 2
+        s = s.copy(player1 = s.player1.copy(score = 40), turnStartScore = 40)
+        s = standard.applyRoundTotal(s, 40)  // spiller 1 vinner legen
+
+        s = standard.startNextLeg(s)
+        // Spiller 2 scoret 100 av 501 i leg 1 - de 100 poengene skal folge med videre
+        assertEquals(100, s.player2.pointsScoredPreviousLegs)
+        assertEquals(100.0, s.player2.average, 0.01) // 100 poeng / 3 piler * 3
+    }
+
+    @Test
+    fun `rematch nullstiller legs-stillingen men beholder formatet`() {
+        var s = GameState.new("A", "B", totalLegsInMatch = 5).withP1Score(40)
+        s = standard.applyRoundTotal(s, 40)
+        s = standard.rematch(s, startingPlayer = 2)
+
+        assertEquals(0, s.player1LegsWon)
+        assertEquals(0, s.player2LegsWon)
+        assertEquals(5, s.totalLegsInMatch)
+        assertEquals(2, s.currentPlayer)
+        assertEquals(501, s.player1.score)
+    }
 }

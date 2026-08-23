@@ -52,7 +52,8 @@ fun GameSettingsScreen(
     var doubleIn by remember { mutableStateOf(false) }
     var doubleOut by remember { mutableStateOf(true) }
     var calculatorMode by remember { mutableStateOf(false) } // Standard: rundetotal
-    var quickScores by remember { mutableStateOf(false) } // Kun relevant nar calculatorMode er av
+    var quickScores by remember { mutableStateOf(true) } // Standard pa. Kun relevant nar calculatorMode er av
+    var totalLegs by remember { mutableIntStateOf(1) } // Kampformat: best av 1/3/5/7/9 legs
     var expandedPlayer1 by remember { mutableStateOf(false) } // Styrer om dropdown for spiller 1 er åpen
     var expandedPlayer2 by remember { mutableStateOf(false) }
     var showSamePlayerWarning by remember { mutableStateOf(false) }
@@ -95,19 +96,26 @@ fun GameSettingsScreen(
             )
         }
 
-        // Hovedinnhold
+        // Hovedinnhold. START GAME ligger sist i denne scrollen, ikke festet nederst på
+        // skjermen: da må man scrolle forbi alle innstillingene for å nå den, og oppdager
+        // dermed valgene (bl.a. Legs) underveis. En festet knapp gjør det lett å starte
+        // kampen uten å ha sett dem i det hele tatt.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 80.dp)
+                // 68dp klarerer tilbake-knappen (16dp padding + 48dp knapp) med litt margin.
+                .padding(top = 68.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(bottom = 8.dp),
+            // Strammet fra 20dp: med sju mellomrom utgjorde de alene over 140dp, som var
+            // en stor del av grunnen til at skjermen ikke fikk plass uten scrolling.
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Tittel
-            Spacer(modifier = Modifier.height(25.dp))
+            // Klarerer DARTBUD-logoen i bakgrunnsbildet - uten denne legger "Game Setup"
+            // seg oppå den. Bakgrunnen scroller ikke, så avstanden må ligge her.
+            Spacer(modifier = Modifier.height(32.dp))
             Text(
                 "Game Setup",
                 fontSize = 32.sp,
@@ -344,7 +352,7 @@ fun GameSettingsScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -382,7 +390,7 @@ fun GameSettingsScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -401,8 +409,10 @@ fun GameSettingsScreen(
                 }
             }
 
-            // Manage Players button
-            Spacer(modifier = Modifier.height(80.dp))
+            // Manage Players button. Column-en her har allerede spacedBy, så denne Spaceren
+            // kommer på toppen av mellomrommet over og under - 80dp her ga til sammen
+            // 120dp dødplass mellom spillerkortene og knappen.
+            Spacer(modifier = Modifier.height(4.dp))
             val manageInteraction = remember { MutableInteractionSource() }
             val isManagePressed by manageInteraction.collectIsPressedAsState()
 
@@ -438,8 +448,8 @@ fun GameSettingsScreen(
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         "🎯 GAME SETTINGS",
@@ -556,6 +566,38 @@ fun GameSettingsScreen(
                             )
                         }
                     }
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "Legs:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        // Ingen forklarende undertekst her: dartspillere vet hva legs er.
+                        // Kampen er ferdig så snart en spiller har vunnet flertallet av
+                        // dem - se GameEngine.legsNeededToWinMatch (best av 3 -> 2, osv.)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(1, 3, 5, 7, 9).forEach { legs ->
+                                val isSelected = totalLegs == legs
+                                Button(
+                                    onClick = { totalLegs = legs },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isSelected) Color(0xFFD84FF8) else Color(0xFF505050)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(vertical = 6.dp)
+                                ) {
+                                    Text("$legs", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -566,7 +608,7 @@ fun GameSettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp)
+                    .height(64.dp)
                     .shadow(16.dp, RoundedCornerShape(35.dp), spotColor = Color(0xFFFFD700))
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -602,7 +644,7 @@ fun GameSettingsScreen(
                             val p2Name = player2 ?: "PLAYER 2"
                             // Alle innstillinger sendes som del av navigasjonsruten (ikke delt
                             // ViewModel-state), så GameScreen kan starte helt uavhengig
-                            navController.navigate("game/$doubleIn/$doubleOut/$calculatorMode/$quickScores/$p1Name/$p2Name")
+                            navController.navigate("game/$doubleIn/$doubleOut/$calculatorMode/$quickScores/$totalLegs/$p1Name/$p2Name")
                         }
                     },
                 contentAlignment = Alignment.Center

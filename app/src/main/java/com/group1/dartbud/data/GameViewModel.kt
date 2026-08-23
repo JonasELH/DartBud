@@ -67,6 +67,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         winnerId: Int,
         doubleIn: Boolean,
         doubleOut: Boolean,
+        player1LegsWon: Int = 0,
+        player2LegsWon: Int = 0,
+        totalLegsInMatch: Int = 1,
         player1Stats: GameStatsEntity,
         player2Stats: GameStatsEntity
     ) {
@@ -80,7 +83,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     player2Id = player2Id,
                     winnerId = winnerId,
                     doubleIn = doubleIn,
-                    doubleOut = doubleOut
+                    doubleOut = doubleOut,
+                    player1LegsWon = player1LegsWon,
+                    player2LegsWon = player2LegsWon,
+                    totalLegsInMatch = totalLegsInMatch
                 )
 
                 // Lagre game i Room
@@ -121,6 +127,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                             winnerName = winner.username,
                             doubleIn = doubleIn,
                             doubleOut = doubleOut,
+                            player1LegsWon = player1LegsWon,
+                            player2LegsWon = player2LegsWon,
+                            totalLegsInMatch = totalLegsInMatch,
                             player1Average = player1Stats.average,
                             player2Average = player2Stats.average,
                             player1HighestScore = player1Stats.highestScore,

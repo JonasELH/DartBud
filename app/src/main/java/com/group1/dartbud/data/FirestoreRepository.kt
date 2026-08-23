@@ -45,6 +45,11 @@ data class FirestoreGame(
     val winnerName: String = "",
     val doubleIn: Boolean = false,
     val doubleOut: Boolean = true,
+    // Kampformat (best av 1/3/5/7/9 legs) og legs-stillingen ved kampslutt.
+    // totalLegsInMatch = 1 for kamper spilt for denne funksjonen fantes.
+    val player1LegsWon: Int = 0,
+    val player2LegsWon: Int = 0,
+    val totalLegsInMatch: Int = 1,
     val player1Average: Double = 0.0,
     val player2Average: Double = 0.0,
     val player1HighestScore: Int = 0,
