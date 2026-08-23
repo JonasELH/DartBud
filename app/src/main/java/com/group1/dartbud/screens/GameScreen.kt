@@ -1227,13 +1227,19 @@ fun NumberButton(
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
 
-    // Ett siffer (0-9) og en tresifret snarvei (f.eks. 100) deler samme knapp, men
-    // 100 ved 24sp rakk ikke plass i en av fem like brede kolonner og brøt til to
-    // linjer ("10" / "0"). Skaleres ned etter antall siffer i stedet.
-    val fontSize = when (number.toString().length) {
-        1 -> 24.sp
-        2 -> 22.sp
-        else -> 17.sp
+    // Ett siffer (0-9) og en tresifret snarvei (f.eks. 100) deler samme knapp. En fast
+    // størrelse etter antall siffer holdt ikke på alle enheter (bl.a. når brukeren har
+    // skrudd opp skriftstørrelsen i Android-innstillingene, som skalerer sp-verdier),
+    // så "100" ble likevel klippet av. Bruker derfor faktisk krymp-til-passer: starter
+    // stort og måler om teksten går utenfor bredden, og krymper til den gjør det.
+    var fontSize by remember(number) {
+        mutableStateOf(
+            when (number.toString().length) {
+                1 -> 24.sp
+                2 -> 22.sp
+                else -> 17.sp
+            }
+        )
     }
 
     Button(
@@ -1253,7 +1259,12 @@ fun NumberButton(
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             color = Color.White,
             softWrap = false,
-            maxLines = 1
+            maxLines = 1,
+            onTextLayout = { result ->
+                if (result.didOverflowWidth) {
+                    fontSize *= 0.9f
+                }
+            }
         )
     }
 }
