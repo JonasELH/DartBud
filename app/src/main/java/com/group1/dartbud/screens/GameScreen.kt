@@ -36,6 +36,10 @@ import com.group1.dartbud.game.GameState
 import com.group1.dartbud.game.Player
 import com.group1.dartbud.game.calculateCheckout
 import com.group1.dartbud.game.calculateCheckoutAlternatives
+import com.group1.dartbud.game.MULTIPLY_SYMBOL
+import com.group1.dartbud.game.PLUS_SYMBOL
+import com.group1.dartbud.game.formatExpressionForDisplay
+import com.group1.dartbud.game.roundTotalFromExpression
 import com.group1.dartbud.game.isValidThrowInput
 
 
@@ -150,15 +154,27 @@ fun GameScreen(
     // Calculator Mode av: hele rundetotalen skrives inn direkte, gyldig område er 0-180
     // (maks er tre trippel-20). Motoren stoler på spilleren for double-in/double-out -
     // se GameEngine.applyRoundTotal.
+    // I Round Total-modus kan inputet være et helt regnestykke ("17×3+13×3+19×3"), ikke
+    // bare et tall - se roundTotalFromExpression. Den håndterer også det enkle tilfellet
+    // der spilleren har regnet selv og bare taster "147".
     val isValidInput = if (calculatorModeEnabled) {
         inputValue.toIntOrNull()?.let { isValidThrowInput(it, multiplier) } ?: false
     } else {
-        inputValue.toIntOrNull()?.let { it in 0..180 } ?: false
+        roundTotalFromExpression(inputValue) != null
     }
 
     fun clearInput() {
         inputValue = ""
         multiplier = 1
+    }
+
+    // × og + i Round Total-modus. To operatorer på rad ville gitt et uttrykk som aldri
+    // kan regnes ut, så en ny operator erstatter den forrige i stedet - slik en vanlig
+    // kalkulator oppfører seg. En operator som aller første tegn ignoreres.
+    fun appendOperator(symbol: String) {
+        if (inputValue.isEmpty()) return
+        val endsWithOperator = inputValue.endsWith(MULTIPLY_SYMBOL) || inputValue.endsWith(PLUS_SYMBOL)
+        inputValue = if (endsWithOperator) inputValue.dropLast(1) + symbol else inputValue + symbol
     }
 
     // Lukker bust-/no-score-dialogen ved å fjerne meldingen fra tilstanden
@@ -178,7 +194,7 @@ fun GameScreen(
     // noe til motoren - så her stopper vi opp og spør i stedet for å kalle
     // applyRoundTotal med en gang.
     fun confirmRoundTotal(quickValue: Int? = null) {
-        val value = quickValue ?: inputValue.toIntOrNull() ?: return
+        val value = quickValue ?: roundTotalFromExpression(inputValue) ?: return
         val wouldFinish = gameState.activePlayer.score - value == 0
         if (wouldFinish) {
             pendingRoundTotal = value
@@ -682,18 +698,25 @@ fun GameScreen(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (inputValue.isNotEmpty()) {
-                        "$inputValue ${if (multiplier > 1) "× $multiplier" else ""}"
-                    } else {
-                        "..."
-                    },
-                    fontSize = (scoreDisplayFontSize.value * 1.6f).sp,
+                val displayText = if (inputValue.isNotEmpty()) {
+                    // formatExpressionForDisplay setter parentes rundt hvert kast som er
+                    // ganget opp ("(19×3) + (17×3)"). I Calculator Mode er inputValue bare
+                    // et tall, og da gjør den ingenting.
+                    "${formatExpressionForDisplay(inputValue)} ${if (multiplier > 1) "× $multiplier" else ""}"
+                } else {
+                    "..."
+                }
+                // Et helt regnestykke ("17×3+13×3+19×3") er mye bredere enn de 1-3
+                // sifrene feltet opprinnelig var laget for, så teksten krymper til den
+                // får plass - se AutoShrinkText.
+                AutoShrinkText(
+                    text = displayText,
+                    baseFontSize = (scoreDisplayFontSize.value * 1.6f).sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     color = if (inputValue.isNotEmpty()) Color(0xFFE7D325) else Color(0xFFE1CD1B),
-
-                    )
+                    minFontSize = 12.sp
+                )
             }
 
             // Undo / Double / Triple-raden. Double og Triple er "toggle"-knapper (trykk igjen
@@ -1045,13 +1068,24 @@ fun GameScreen(
                         border = if (isClearPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
                         interactionSource = clearInteraction
                     ) {
-                        Text(
-                            "CLR",
-                            fontSize = numberButtonFontSize,
+                        AutoShrinkText(
+                            text = "CLR",
+                            baseFontSize = numberButtonFontSize,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier
+                            color = Color.White
+                        )
+                    }
 
+                    // × og + finnes kun i Round Total-modus: der taster man hele rundens sum,
+                    // og da er det nyttig å kunne regne den ut på stedet ("17×3+13×3+19×3")
+                    // i stedet for i hodet. I Calculator Mode taster man én pil av gangen,
+                    // så + gir ingen mening, og Double/Triple dekker allerede ×.
+                    if (!calculatorModeEnabled) {
+                        OperatorButton(
+                            symbol = MULTIPLY_SYMBOL,
+                            onClick = { appendOperator(MULTIPLY_SYMBOL) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            fontSize = numberButtonFontSize
                         )
                     }
 
@@ -1063,6 +1097,15 @@ fun GameScreen(
                             .fillMaxSize(),
                         shape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp)
                     )
+
+                    if (!calculatorModeEnabled) {
+                        OperatorButton(
+                            symbol = PLUS_SYMBOL,
+                            onClick = { appendOperator(PLUS_SYMBOL) },
+                            modifier = Modifier.weight(1f).fillMaxSize(),
+                            fontSize = numberButtonFontSize
+                        )
+                    }
 
                     // Bekreft-knappen ("✓"/"✗"): grønn og aktiv når inputet er tomt (ingenting
                     // å bekrefte enda) eller gyldig (0-60), rød når spilleren har tastet inn
@@ -1324,6 +1367,75 @@ fun ThrowButton(
     }
 }
 
+/**
+ * Tekst som krymper til den faktisk får plass i bredden.
+ *
+ * Flere steder på denne skjermen varierer innholdet mye mer enn plassen: en knapp kan
+ * inneholde "1" eller "100", og score-displayet alt fra ett siffer til et helt
+ * regnestykke. En fast størrelse blir da enten for stor (teksten brekker eller klippes)
+ * eller unødig liten. Måler derfor faktisk overflow og skalerer ned 1sp av gangen.
+ *
+ * remember(text, baseFontSize) nullstiller ved hver endring - ellers ville størrelsen
+ * bare gått nedover og aldri kommet tilbake når innholdet blir kortere igjen.
+ */
+@Composable
+fun AutoShrinkText(
+    text: String,
+    baseFontSize: TextUnit,
+    color: Color,
+    fontWeight: FontWeight,
+    modifier: Modifier = Modifier,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
+    minFontSize: TextUnit = 10.sp
+) {
+    var fontSize by remember(text, baseFontSize) { mutableStateOf(baseFontSize) }
+
+    Text(
+        text = text,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        fontFamily = fontFamily,
+        color = color,
+        softWrap = false,
+        maxLines = 1,
+        modifier = modifier,
+        onTextLayout = { result ->
+            if (result.didOverflowWidth && fontSize > minFontSize) {
+                fontSize = (fontSize.value - 1f).sp
+            }
+        }
+    )
+}
+
+// Regneoperator (× og +) i Round Total-modus. Samme mørkere grå som Quick Scores-
+// knappene, siden begge deler er "noe annet enn et siffer" og bør lese sånn.
+@Composable
+fun OperatorButton(
+    symbol: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    fontSize: TextUnit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3A)),
+        border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
+        interactionSource = interaction
+    ) {
+        AutoShrinkText(
+            text = symbol,
+            baseFontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            color = Color.White
+        )
+    }
+}
+
 // Gjenbrukbar tastaturknapp for tallpaden (0-9). shape sendes inn utenfra via
 // getCornerShape() slik at kun de ytre knappene i rutenettet får avrundede hjørner.
 @Composable
@@ -1340,21 +1452,6 @@ fun NumberButton(
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
 
-    // Ett siffer (0-9) og en tresifret snarvei (f.eks. 100) deler samme knapp. En fast
-    // størrelse etter antall siffer holdt ikke på alle enheter (bl.a. når brukeren har
-    // skrudd opp skriftstørrelsen i Android-innstillingene, som skalerer sp-verdier),
-    // så "100" ble likevel klippet av. Bruker derfor faktisk krymp-til-passer: starter
-    // stort og måler om teksten går utenfor bredden, og krymper til den gjør det.
-    var fontSize by remember(number) {
-        mutableStateOf(
-            when (number.toString().length) {
-                1 -> 24.sp
-                2 -> 22.sp
-                else -> 17.sp
-            }
-        )
-    }
-
     Button(
         onClick = onClick,
         modifier = modifier,
@@ -1365,23 +1462,15 @@ fun NumberButton(
         border = if (isPressed) BorderStroke(3.dp, Color(0xFFFFD700)) else null,
         interactionSource = interaction
     ) {
-        Text(
+        // Ett siffer (0-9) og en tresifret snarvei (f.eks. 100) deler samme knapp, og
+        // Quick Scores gjør i tillegg kolonnene smalere. Lar derfor teksten krympe til
+        // den passer i stedet for å gjette en fast størrelse - se AutoShrinkText.
+        AutoShrinkText(
             text = number.toString(),
-            fontSize = fontSize,
+            baseFontSize = 24.sp,
             fontWeight = FontWeight.Black,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            color = Color.White,
-            softWrap = false,
-            maxLines = 1,
-            onTextLayout = { result ->
-                // 1sp av gangen i stedet for en prosentvis reduksjon - ellers skjøt
-                // krympingen langt forbi det som faktisk trengtes (f.eks. "100" endte
-                // synlig mindre enn de andre Quick Scores-tallene selv om den bare så
-                // vidt trengte å krympe litt).
-                if (result.didOverflowWidth && fontSize > 10.sp) {
-                    fontSize = (fontSize.value - 1f).sp
-                }
-            }
+            color = Color.White
         )
     }
 }

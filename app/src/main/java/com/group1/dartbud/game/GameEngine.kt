@@ -111,6 +111,72 @@ data class GameState(
     }
 }
 
+// Tegnene regneuttrykket i Round Total-modus bruker. Ligger her, ikke i UI-laget,
+// slik at knappene og parseren garantert er enige om hva de skal se etter.
+const val MULTIPLY_SYMBOL = "×"
+const val PLUS_SYMBOL = "+"
+
+/**
+ * Regner ut rundetotalen fra et uttrykk spilleren har tastet inn i Round Total-modus,
+ * f.eks. "17×3+13×3+19×3" (=147) eller bare "51+39+57" (=147).
+ *
+ * Grammatikken er med vilje minimal - kun tall, × og + - fordi det er alt en
+ * dartrunde trenger: tre kast, hvert av dem eventuelt et felt ganget med 2 eller 3.
+ * Multiplikasjon binder sterkere enn addisjon, slik at "17×3+13" blir 51+13=64 og
+ * ikke (17×3+13)=... regnet fra venstre. Det faller sammen med måten man taster
+ * uttrykket inn på.
+ *
+ * Returnerer null hvis uttrykket ikke er ferdig eller ikke gir mening (tomt, ender på
+ * en operator, inneholder tegn som ikke er siffer). Kalleren avgjør selv om resultatet
+ * er en lovlig rundetotal - se roundTotalFromExpression.
+ */
+fun evaluateExpression(expression: String): Int? {
+    if (expression.isBlank()) return null
+
+    var sum = 0
+    for (term in expression.split(PLUS_SYMBOL)) {
+        var product = 1
+        for (factor in term.split(MULTIPLY_SYMBOL)) {
+            // toIntOrNull fanger både tomme ledd ("17+" eller "17××3") og alt annet
+            // som ikke er et rent tall, uten at vi trenger en egen validering.
+            val value = factor.toIntOrNull() ?: return null
+            product *= value
+        }
+        sum += product
+    }
+    return sum
+}
+
+/**
+ * Gjør uttrykket lesbart i score-displayet: hvert kast som er et felt ganget opp får
+ * parentes rundt seg, og leddene skilles med luft. "19×3+17×3+13×3" vises altså som
+ * "(19×3) + (17×3) + (13×3)", slik at man ser de tre kastene som tre kast.
+ *
+ * Kun formatering - selve uttrykket som lagres og regnes ut er uendret, se
+ * [evaluateExpression]. Sluttparentesen settes først når leddet er ferdig, slik at et
+ * halvskrevet kast vises som "(19×" mens man taster.
+ *
+ * Ledd uten multiplikasjon får ingen parentes: har spilleren regnet selv og tastet
+ * "60+45", er det allerede så tydelig som det blir.
+ */
+fun formatExpressionForDisplay(expression: String): String =
+    expression.split(PLUS_SYMBOL).joinToString(" $PLUS_SYMBOL ") { term ->
+        when {
+            !term.contains(MULTIPLY_SYMBOL) -> term
+            term.endsWith(MULTIPLY_SYMBOL) -> "($term"
+            else -> "($term)"
+        }
+    }
+
+/**
+ * Som [evaluateExpression], men returnerer kun verdier som faktisk er en lovlig
+ * rundetotal (0-180, der 180 er tre trippel-20). Uttrykk som regner seg fram til
+ * noe utenfor det - f.eks. "20×20" - gir null, slik at UI-et kan vise at det ikke
+ * lar seg registrere.
+ */
+fun roundTotalFromExpression(expression: String): Int? =
+    evaluateExpression(expression)?.takeIf { it in 0..180 }
+
 /**
  * Kan én enkelt pil gi denne poengsummen?
  *

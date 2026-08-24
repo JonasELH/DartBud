@@ -2,6 +2,9 @@ package com.group1.dartbud
 
 import com.group1.dartbud.game.GameEngine
 import com.group1.dartbud.game.GameState
+import com.group1.dartbud.game.evaluateExpression
+import com.group1.dartbud.game.formatExpressionForDisplay
+import com.group1.dartbud.game.roundTotalFromExpression
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -639,6 +642,95 @@ class GameEngineTest {
         // Spiller 2 scoret 100 av 501 i leg 1 - de 100 poengene skal folge med videre
         assertEquals(100, s.player2.pointsScoredPreviousLegs)
         assertEquals(100.0, s.player2.average, 0.01) // 100 poeng / 3 piler * 3
+    }
+
+    // ---------- regneuttrykk i Round Total-modus ----------
+
+    @Test
+    fun `rene tall regnes ut som for`() {
+        assertEquals(60, evaluateExpression("60"))
+        assertEquals(0, evaluateExpression("0"))
+        assertEquals(180, evaluateExpression("180"))
+    }
+
+    @Test
+    fun `multiplikasjon binder sterkere enn addisjon`() {
+        // 51 + 13 = 64, IKKE (17+13)*3 = 90 og ikke ((17*3)+13)*3
+        assertEquals(64, evaluateExpression("17×3+13"))
+    }
+
+    @Test
+    fun `tre tripler summeres riktig`() {
+        assertEquals(147, evaluateExpression("17×3+13×3+19×3"))
+        // Samme runde tastet inn som ferdig utregnede kast
+        assertEquals(147, evaluateExpression("51+39+57"))
+    }
+
+    @Test
+    fun `maksrunden lar seg taste inn begge veier`() {
+        assertEquals(180, evaluateExpression("20×3+20×3+20×3"))
+        assertEquals(180, evaluateExpression("60+60+60"))
+    }
+
+    @Test
+    fun `uferdige uttrykk gir null`() {
+        assertNull(evaluateExpression(""))
+        assertNull(evaluateExpression("17×"))
+        assertNull(evaluateExpression("17+"))
+        assertNull(evaluateExpression("17××3"))
+        assertNull(evaluateExpression("+17"))
+    }
+
+    @Test
+    fun `uttrykk som gir rundetotal utenfor 0 til 180 avvises`() {
+        assertNull(roundTotalFromExpression("20×20"))
+        assertNull(roundTotalFromExpression("60+60+60+60"))
+        assertEquals(180, roundTotalFromExpression("60+60+60"))
+        assertEquals(0, roundTotalFromExpression("0"))
+    }
+
+    @Test
+    fun `rundetotal fra uferdig uttrykk er ogsa null`() {
+        assertNull(roundTotalFromExpression("17×"))
+        assertNull(roundTotalFromExpression(""))
+    }
+
+    @Test
+    fun `kast med multiplikasjon far parentes i displayet`() {
+        assertEquals("(19×3) + (17×3) + (13×3)", formatExpressionForDisplay("19×3+17×3+13×3"))
+    }
+
+    @Test
+    fun `ledd uten multiplikasjon far ingen parentes`() {
+        assertEquals("60", formatExpressionForDisplay("60"))
+        assertEquals("60 + 45", formatExpressionForDisplay("60+45"))
+        // Blandet: kun leddet som faktisk er ganget opp far parentes
+        assertEquals("(20×3) + 45", formatExpressionForDisplay("20×3+45"))
+    }
+
+    @Test
+    fun `halvskrevet kast far apen parentes mens man taster`() {
+        assertEquals("19", formatExpressionForDisplay("19"))
+        assertEquals("(19×", formatExpressionForDisplay("19×"))
+        assertEquals("(19×3)", formatExpressionForDisplay("19×3"))
+        assertEquals("(19×3) + ", formatExpressionForDisplay("19×3+"))
+    }
+
+    @Test
+    fun `formatering endrer ikke hva uttrykket regnes ut til`() {
+        // Formateringen er kun visuell - parseren ser fortsatt det samme
+        val expr = "19×3+17×3+13×3"
+        assertEquals(147, evaluateExpression(expr))
+        assertEquals("(19×3) + (17×3) + (13×3)", formatExpressionForDisplay(expr))
+    }
+
+    @Test
+    fun `uttrykk kan mates rett inn i motoren`() {
+        var s = start()
+        val total = roundTotalFromExpression("17×3+13×3+19×3")
+        assertEquals(147, total)
+        s = standard.applyRoundTotal(s, total!!)
+        assertEquals(354, s.player1.score) // 501 - 147
     }
 
     @Test
