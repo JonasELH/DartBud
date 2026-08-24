@@ -38,9 +38,9 @@ val PinkGameColors = GameColors(
 val DeepPurpleGameColors = GameColors(
     id = "deep_purple",
     displayName = "Deep Purple",
-    outline = Color(0xEB9B5DE5),
-    outlinePressed = Color(0xFF5B21B6),
-    button = Color(0xFF7C3AED)
+    outline = Color(0xEB7C2FD6),
+    outlinePressed = Color(0xFF4C1D95),
+    button = Color(0xFF6D28D9)
 )
 
 val EmeraldGameColors = GameColors(
