@@ -59,15 +59,18 @@ val FireOrangeGameColors = GameColors(
     button = Color(0xFFEA580C)
 )
 
-// "Matt svart" som ren svart ville vært usynlig mot den mørke spillbakgrunnen, så
-// selve rammene er sølvgrå. Temaet leser da som monokromt/blackout i stedet for
-// å forsvinne helt.
+// Ekte svart. Rammene forsvinner ikke selv om bakgrunnen er mørk: spillerkortene og
+// tallknappene er lysegrå (0xFF505050), så en svart kant leser som en skarp skygge mot
+// dem. Full alfa her og ikke 0xEB som de andre - en gjennomskinnelig svart ville blitt
+// vasket ut av bakgrunnen i stedet for å stå som en ren linje.
 val MatteBlackGameColors = GameColors(
     id = "matte_black",
     displayName = "Matte Black",
-    outline = Color(0xEBBFBFBF),
-    outlinePressed = Color(0xFF6B6B6B),
-    button = Color(0xFF4A4A4A)
+    outline = Color(0xFF000000),
+    // Undo-kanten trenger å skille seg fra den svarte hvilekanten for å gi
+    // trykk-tilbakemelding, derfor mørk grafitt og ikke svart på svart.
+    outlinePressed = Color(0xFF5A5A5A),
+    button = Color(0xFF1A1A1A)
 )
 
 val TurquoiseGameColors = GameColors(
