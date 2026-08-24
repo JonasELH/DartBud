@@ -164,6 +164,29 @@ fun MainMenuScreen(
                 Text("Rules", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
 
             }
+
+            // Options knapp
+            val optionsInteraction = remember { MutableInteractionSource() }
+            val isOptionsPressed by optionsInteraction.collectIsPressedAsState()
+
+            Button(
+                onClick = { navController.navigate("options") },
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .height(56.dp)
+                    .shadow(8.dp, RoundedCornerShape(28.dp)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x66000000)
+                ),
+                shape = RoundedCornerShape(28.dp),
+                border = if (isOptionsPressed) {
+                    BorderStroke(3.dp, Color(0xFFFFD700))
+                } else null,
+                interactionSource = optionsInteraction
+            ) {
+                Text("Options", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+
+            }
         }
     }
 }

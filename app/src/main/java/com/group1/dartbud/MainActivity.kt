@@ -28,6 +28,12 @@ import com.group1.dartbud.screens.GameScreen
 import com.group1.dartbud.viewmodel.PlayerViewModel
 import com.group1.dartbud.viewmodel.GameViewModel
 import com.group1.dartbud.viewmodel.AuthViewModel
+import com.group1.dartbud.viewmodel.ThemeViewModel
+import com.group1.dartbud.screens.OptionsScreen
+import com.group1.dartbud.ui.theme.LocalGameColors
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 // Appens eneste Activity (single-activity-app). All navigasjon skjer internt
 // via Compose Navigation (NavHost) i DartBudApp, ikke via egne Activities.
@@ -57,6 +63,12 @@ fun DartBudApp() {
     val playerViewModel: PlayerViewModel = viewModel()
     val gameViewModel: GameViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
+    val themeViewModel: ThemeViewModel = viewModel()
+
+    // Fargetemaet for spillskjermen leveres via en CompositionLocal i stedet for å tres
+    // gjennom hver eneste composable som parameter - GameScreen og komponentene der inne
+    // (PlayerCard, ThrowButton) leser det med LocalGameColors.current. Se GameColors.kt.
+    val gameColors by themeViewModel.gameColors.collectAsState()
 
     // Holder gameViewModel oppdatert med hvilken bruker som er innlogget,
     // slik at spilldata lagres/hentes for riktig Google-bruker i Firestore.
@@ -66,6 +78,7 @@ fun DartBudApp() {
         }
     }
 
+    CompositionLocalProvider(LocalGameColors provides gameColors) {
     Scaffold { innerPadding ->
         // Navigasjonsgrafen for hele appen. Alle ruter deler samme
         // navController og de samme ViewModelene definert over.
@@ -240,6 +253,29 @@ fun DartBudApp() {
                     playerViewModel = playerViewModel
                 )
             }
+
+            // Innstillinger. Foreløpig kun fargetema for spillskjermen.
+            composable(
+                "options",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeIn(animationSpec = tween(200))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(200)
+                    ) + fadeOut(animationSpec = tween(200))
+                }
+            ) {
+                OptionsScreen(
+                    navController = navController,
+                    themeViewModel = themeViewModel
+                )
+            }
         }
+    }
     }
 }

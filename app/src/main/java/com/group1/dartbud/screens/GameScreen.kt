@@ -41,6 +41,7 @@ import com.group1.dartbud.game.PLUS_SYMBOL
 import com.group1.dartbud.game.formatExpressionForDisplay
 import com.group1.dartbud.game.roundTotalFromExpression
 import com.group1.dartbud.game.isValidThrowInput
+import com.group1.dartbud.ui.theme.LocalGameColors
 
 
 // Hjelpefunksjon for å skalere ned skriftstørrelse uten å gå over en maks-grense
@@ -69,6 +70,10 @@ fun GameScreen(
     // lenger ned. Merk: playerCardHeight/throwButtonHeight/osv. her blir skygget av
     // nye variabler med samme navn inne i BoxWithConstraints under (målt fra faktisk
     // tilgjengelig plass), så det er kun font-størrelsene herfra som faktisk brukes i layoutet.
+    // Fargetemaet for spillskjermen (rammer, rutenett, knappekanter). Velges under
+    // Options i hovedmenyen og leveres hit via LocalGameColors - se GameColors.kt.
+    val gameColors = LocalGameColors.current
+
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
@@ -535,7 +540,7 @@ fun GameScreen(
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFFC1E69)
+                                containerColor = gameColors.button
                             )
                         ) {
                             Text("Main Menu")
@@ -744,9 +749,9 @@ fun GameScreen(
                     ),
                     shape = RoundedCornerShape(6.dp),
                     border = if (isUndoPressed) {
-                        BorderStroke(3.dp, Color(0xFFB2073F))
+                        BorderStroke(3.dp, gameColors.outlinePressed)
                     } else {
-                        BorderStroke(1.5.dp, Color(0xEBF148E8))
+                        BorderStroke(1.5.dp, gameColors.outline)
                     },
                     interactionSource = undoInteraction
                 ) {
@@ -854,7 +859,7 @@ fun GameScreen(
                         border = if (isCycleCheckoutPressed) {
                             BorderStroke(3.dp, Color(0xFFFFD700))
                         } else {
-                            BorderStroke(1.5.dp, Color(0xEBF148E8).copy(alpha = if (canCycleCheckout) 1f else 0.35f))
+                            BorderStroke(1.5.dp, gameColors.outline.copy(alpha = if (canCycleCheckout) 1f else 0.35f))
                         },
                         interactionSource = cycleCheckoutInteraction
                     ) {
@@ -881,7 +886,7 @@ fun GameScreen(
                         border = if (isNoScorePressed) {
                             BorderStroke(3.dp, Color(0xFFFFD700))
                         } else {
-                            BorderStroke(1.5.dp, Color(0xEBF148E8))
+                            BorderStroke(1.5.dp, gameColors.outline)
                         },
                         interactionSource = noScoreInteraction
                     ) {
@@ -922,7 +927,7 @@ fun GameScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.30f)
-                    .background(Color(0xEBF148E8), RoundedCornerShape(8.dp))
+                    .background(gameColors.outline, RoundedCornerShape(8.dp))
                     .padding(1.dp),
                 verticalArrangement = Arrangement.Top
             ) {
@@ -1164,20 +1169,22 @@ fun PlayerCard(
     legsWon: Int? = null,
     modifier: Modifier = Modifier
 ) {
+    val gameColors = LocalGameColors.current
+
     Card(
         modifier = modifier
             .fillMaxHeight()
             .shadow(
                 elevation = if (isActive) 16.dp else 8.dp,
                 shape = RoundedCornerShape(8.dp),
-                spotColor = Color(0xEBF148E8)
+                spotColor = gameColors.outline
             )
             .then(
                 if (isActive) {
                     Modifier.drawWithContent {
                         drawContent()
                         drawRoundRect(
-                            color = Color(0xEBF148E8),
+                            color = gameColors.outline,
                             cornerRadius = CornerRadius(8.dp.toPx()),
                             style = Stroke(width = 3.dp.toPx())
                         )
@@ -1337,6 +1344,8 @@ fun ThrowButton(
     isActive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val gameColors = LocalGameColors.current
+
     BoxWithConstraints(modifier = modifier) {
         val buttonHeight = maxHeight
         val cornerRadius = buttonHeight * 0.5f
@@ -1352,7 +1361,7 @@ fun ThrowButton(
                 ),
                 shape = RoundedCornerShape(cornerRadius),
                 border = if (isActive) {
-                    BorderStroke(1.5.dp, Color(0xEBF148E8))
+                    BorderStroke(1.5.dp, gameColors.outline)
                 } else null,
                 contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
             ) {
