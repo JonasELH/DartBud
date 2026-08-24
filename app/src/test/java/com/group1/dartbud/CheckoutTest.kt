@@ -170,6 +170,24 @@ class CheckoutTest {
     }
 
     @Test
+    fun `121 har 25 T20 D18 som alternativ rett etter hovedforslaget`() {
+        val alternativer = calculateCheckoutAlternatives(121)
+        // Hovedforslaget skal vaere urort
+        assertEquals("T17 T10 D20", alternativer.first())
+        // Den handplukkede ruten kommer forst nar man blar
+        assertEquals("25 T20 D18", alternativer[1])
+        // ... og den summerer riktig: 25 + 60 + 36
+        assertEquals(121, sumOf("25 T20 D18"))
+    }
+
+    @Test
+    fun `handplukkede ruter pavirker bare scoren de gjelder`() {
+        // 120 og 122 ligger rundt 121 og skal ikke ha faatt noe ekstra
+        assertTrue("25 T20 D18" !in calculateCheckoutAlternatives(120))
+        assertTrue("25 T20 D18" !in calculateCheckoutAlternatives(122))
+    }
+
+    @Test
     fun `132 har T20 T16 D12 som et av alternativene`() {
         assertTrue(
             "Forventet T20 T16 D12 blant alternativene for 132: ${calculateCheckoutAlternatives(132)}",

@@ -154,6 +154,16 @@ private val smallScoringDarts: List<Pair<Int, String>> =
 
 private val allScoringDarts = bigScoringDarts + smallScoringDarts
 
+// Håndplukkede ekstra-ruter for enkeltscorer, lagt inn rett etter hovedforslaget.
+//
+// Generatoren under prøver bare tripler og indre bull (50) som "store" førstepiler, og
+// finner derfor aldri ruter som åpner med ytre bull (25). 121 er det tydeligste
+// tilfellet: 25 først etterlater 96, som er T20 D18 - altså én trippel i stedet for de
+// to som hovedforslaget T17 T10 D20 krever.
+private val curatedCheckoutAlternatives: Map<Int, List<String>> = mapOf(
+    121 to listOf("25 T20 D18")
+)
+
 // Genererer alternative gyldige checkout-ruter for en score, i tillegg til forslaget fra
 // calculateCheckout(). Brukes av "veksle mellom utganger"-knappen i spillskjermen.
 //
@@ -171,6 +181,10 @@ fun calculateCheckoutAlternatives(score: Int, maxAlternatives: Int = 4): List<St
     if (primary == "No out shot" || primary.isBlank()) return listOf(primary)
 
     val alternatives = linkedSetOf(primary)
+    // Legges inn før de genererte, slik at den håndplukkede ruten er det første man
+    // får se når man blar med veksle-knappen.
+    curatedCheckoutAlternatives[score]?.let { alternatives.addAll(it) }
+
     fun isFull() = alternatives.size > maxAlternatives
 
     for (target in preferredCheckoutDoubles) {
