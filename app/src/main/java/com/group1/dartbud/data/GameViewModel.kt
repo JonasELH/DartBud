@@ -10,6 +10,7 @@ import com.group1.dartbud.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -174,14 +175,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return repository.getStatsByGame(gameId)
     }
 
-    // NB: getStatsByPlayer i repository returnerer en Flow (kan sende flere verdier
-    // over tid), men her collectes kun første emisjon før funksjonen returnerer -
-    // den henter altså gjeldende stats som en engangsliste, ikke en løpende strøm.
+    // getStatsByPlayer i repository returnerer en Flow som følger Room-tabellen (den
+    // fullfører aldri av seg selv). .collect{} ville derfor aldri returnert - hengt
+    // funksjonen for alltid siden ingenting stopper strømmen. .first() henter kun den
+    // første emisjonen og avslutter innsamlingen med det samme, som gir den engangs-
+    // hentingen kommentaren her opprinnelig beskrev.
     suspend fun getStatsByPlayer(playerId: Int): List<GameStatsEntity> {
-        var stats: List<GameStatsEntity> = emptyList()
-        repository.getStatsByPlayer(playerId).collect {
-            stats = it
-        }
-        return stats
+        return repository.getStatsByPlayer(playerId).first()
     }
 }

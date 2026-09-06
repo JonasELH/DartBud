@@ -119,9 +119,10 @@ fun calculateCheckout(score: Int): String {
         60 -> "20 D20"
         in 2..40 step 2 -> "D${score / 2}"
         50 -> "Bull"
-        // Disse scorene kan ikke fullføres på noen lovlig måte (for høye, eller ikke
-        // nåbare med en gyldig kombinasjon av kast som ender på en double)
-        else -> if (score > 170 || score == 169 || score == 168 || score == 166 ||
+        // Disse scorene kan ikke fullføres på noen lovlig måte (for høye eller for lave -
+        // laveste double er D1=2, så 1 kan aldri avsluttes - eller ikke nåbare med en
+        // gyldig kombinasjon av kast som ender på en double)
+        else -> if (score < 2 || score > 170 || score == 169 || score == 168 || score == 166 ||
             score == 165 || score == 163 || score == 162 || score == 159) {
             "No out shot"
         } else {

@@ -96,97 +96,37 @@ fun MainMenuScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Play Game knapp
-            val playGameInteraction = remember { MutableInteractionSource() }
-            val isPlayGamePressed by playGameInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { navController.navigate("game_settings") },
-                modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(56.dp)
-                    .shadow(8.dp, RoundedCornerShape(28.dp)),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0x66000000)
-                ),
-                shape = RoundedCornerShape(28.dp),
-                border = if (isPlayGamePressed) {
-                    BorderStroke(3.dp, Color(0xFFFFD700))
-                } else null,
-                interactionSource = playGameInteraction
-            ) {
-                Text("Play Game", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-
-            }
-
-            // Game History knapp
-            val gameHistoryInteraction = remember { MutableInteractionSource() }
-            val isGameHistoryPressed by gameHistoryInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { navController.navigate("game_history") },
-                modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(56.dp)
-                    .shadow(8.dp, RoundedCornerShape(28.dp)),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0x66000000)
-                ),
-                shape = RoundedCornerShape(28.dp),
-                border = if (isGameHistoryPressed) {
-                    BorderStroke(3.dp, Color(0xFFFFD700))
-                } else null,
-                interactionSource = gameHistoryInteraction
-            ) {
-                Text("Game History", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-
-            }
-
-            // Rules knapp
-            val rulesInteraction = remember { MutableInteractionSource() }
-            val isRulesPressed by rulesInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { navController.navigate("rules") },
-                modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(56.dp)
-                    .shadow(8.dp, RoundedCornerShape(28.dp)),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0x66000000)
-                ),
-                shape = RoundedCornerShape(28.dp),
-                border = if (isRulesPressed) {
-                    BorderStroke(3.dp, Color(0xFFFFD700))
-                } else null,
-                interactionSource = rulesInteraction
-            ) {
-                Text("Rules", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-
-            }
-
-            // Options knapp
-            val optionsInteraction = remember { MutableInteractionSource() }
-            val isOptionsPressed by optionsInteraction.collectIsPressedAsState()
-
-            Button(
-                onClick = { navController.navigate("options") },
-                modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(56.dp)
-                    .shadow(8.dp, RoundedCornerShape(28.dp)),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0x66000000)
-                ),
-                shape = RoundedCornerShape(28.dp),
-                border = if (isOptionsPressed) {
-                    BorderStroke(3.dp, Color(0xFFFFD700))
-                } else null,
-                interactionSource = optionsInteraction
-            ) {
-                Text("Options", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-
-            }
+            MenuButton("Play Game") { navController.navigate("game_settings") }
+            MenuButton("Game History") { navController.navigate("game_history") }
+            MenuButton("Rules") { navController.navigate("rules") }
+            MenuButton("Options") { navController.navigate("options") }
         }
+    }
+}
+
+// Delt av de fire hovedmeny-knappene (Play Game/Game History/Rules/Options), som tidligere
+// var fire byte-for-byte identiske ~18-linjers Button-blokker og bare skilte seg på
+// navigasjonsrute og tekst.
+@Composable
+private fun MenuButton(label: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth(0.75f)
+            .height(56.dp)
+            .shadow(8.dp, RoundedCornerShape(28.dp)),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0x66000000)
+        ),
+        shape = RoundedCornerShape(28.dp),
+        border = if (isPressed) {
+            BorderStroke(3.dp, Color(0xFFFFD700))
+        } else null,
+        interactionSource = interaction
+    ) {
+        Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }

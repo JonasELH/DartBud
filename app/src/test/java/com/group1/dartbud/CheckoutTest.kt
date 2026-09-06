@@ -131,6 +131,14 @@ class CheckoutTest {
         assertEquals("No out shot", calculateCheckout(501))
     }
 
+    @Test
+    fun `1 kan ikke avsluttes - laveste double er D1 pa 2`() {
+        // Falt tidligere gjennom til genericCheckout(1), som ga tom streng i stedet for
+        // "No out shot" - en helt vanlig spilltilstand (f.eks. 4 minus en enkel 3).
+        assertEquals("No out shot", calculateCheckout(1))
+        assertEquals(listOf("No out shot"), calculateCheckoutAlternatives(1))
+    }
+
     // ---------- calculateCheckoutAlternatives - "veksle mellom utganger"-knappen ----------
 
     @Test

@@ -307,7 +307,8 @@ fun GameSettingsScreen(
                                 "🎯 Local Players",
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontSize = 14.sp,
+                                color = Color.White
                             )
                             localProfiles.forEach { profile ->
                                 DropdownMenuItem(

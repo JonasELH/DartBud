@@ -15,7 +15,14 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.DartBud">
+            android:theme="@style/Theme.DartBud"
+            android:screenOrientation="portrait">
+            <!-- Ingen skjerm i appen har et landskaps-oppsett - alt er faste vertikale
+                 Column-layouter (spillerkort, tastatur, osv.). Uten denne låsen kunne en
+                 rotasjon midt i en kamp trigge en Activity-omstart som nullstiller hele
+                 GameScreen sin tilstand (gameState, ventende checkout-dialog osv.), siden
+                 den kun holdes i remember{}, ikke rememberSaveable/ViewModel. -->
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

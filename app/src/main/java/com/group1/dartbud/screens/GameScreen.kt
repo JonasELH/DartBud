@@ -149,7 +149,13 @@ fun GameScreen(
     LaunchedEffect(gameState.currentPlayer, gameState.activePlayer.score) {
         checkoutAltIndex = 0
     }
-    val activeCheckoutAlternatives = calculateCheckoutAlternatives(gameState.activePlayer.score)
+    // remember(score) i stedet for et rått funksjonskall: uten dette regnet den ~18 000
+    // sammenligninger store nested-loop-søket i calculateCheckoutAlternatives() på nytt
+    // ved HVERT tastetrykk på tallpaden (og enhver annen rekomposisjon), selv om aktiv
+    // spillers score ikke hadde endret seg i det hele tatt.
+    val activeCheckoutAlternatives = remember(gameState.activePlayer.score) {
+        calculateCheckoutAlternatives(gameState.activePlayer.score)
+    }
     val canCycleCheckout = activeCheckoutAlternatives.size > 1
     val activeCheckoutSuggestion = activeCheckoutAlternatives[checkoutAltIndex % activeCheckoutAlternatives.size]
 
@@ -857,7 +863,7 @@ fun GameScreen(
                         ),
                         shape = RoundedCornerShape(6.dp),
                         border = if (isCycleCheckoutPressed) {
-                            BorderStroke(3.dp, Color(0xFFFFD700))
+                            BorderStroke(3.dp, gameColors.outlinePressed)
                         } else {
                             BorderStroke(1.5.dp, gameColors.outline.copy(alpha = if (canCycleCheckout) 1f else 0.35f))
                         },
@@ -884,7 +890,7 @@ fun GameScreen(
                         ),
                         shape = RoundedCornerShape(6.dp),
                         border = if (isNoScorePressed) {
-                            BorderStroke(3.dp, Color(0xFFFFD700))
+                            BorderStroke(3.dp, gameColors.outlinePressed)
                         } else {
                             BorderStroke(1.5.dp, gameColors.outline)
                         },
@@ -952,7 +958,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(26) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(0, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     for (i in 1..3) {
@@ -962,7 +969,8 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(if (showQuickScores) i else i-1, digitCols, includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i else i-1, digitCols, includeBottom=true),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     if (showQuickScores) {
@@ -971,7 +979,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(60) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(4, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                 }
@@ -989,7 +998,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(41) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(0, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     for (i in 4..6) {
@@ -999,7 +1009,8 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(if (showQuickScores) i-3 else i-4, digitCols, includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i-3 else i-4, digitCols, includeBottom=true),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     if (showQuickScores) {
@@ -1008,7 +1019,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(85) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(4, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                 }
@@ -1026,7 +1038,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(45) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(0, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     for (i in 7..9) {
@@ -1036,7 +1049,8 @@ fun GameScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxSize(),
-                            shape = getCornerShape(if (showQuickScores) i-6 else i-7, digitCols, includeBottom=true)
+                            shape = getCornerShape(if (showQuickScores) i-6 else i-7, digitCols, includeBottom=true),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                     if (showQuickScores) {
@@ -1045,7 +1059,8 @@ fun GameScreen(
                             onClick = { confirmRoundTotal(100) },
                             modifier = Modifier.weight(1f).fillMaxSize(),
                             shape = getCornerShape(4, digitCols, includeBottom = true),
-                            containerColor = Color(0xFF3A3A3A)
+                            containerColor = Color(0xFF3A3A3A),
+                            baseFontSize = numberButtonFontSize
                         )
                     }
                 }
@@ -1100,7 +1115,8 @@ fun GameScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize(),
-                        shape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp)
+                        shape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp),
+                        baseFontSize = numberButtonFontSize
                     )
 
                     if (!calculatorModeEnabled) {
@@ -1456,7 +1472,12 @@ fun NumberButton(
     // Litt mørkere enn vanlig for Quick Scores-snarveiene (26/41/45/60/85/100), slik at
     // de skiller seg fra de vanlige sifferknappene uten å kopiere fargebruken i
     // referanseappen rett av.
-    containerColor: Color = Color(0xFF505050)
+    containerColor: Color = Color(0xFF505050),
+    // Samme skalerbare størrelse (numberButtonFontSize) som CLR/×/+/✓ i samme rader
+    // bruker. Var tidligere hardkodet til 24.sp her, så på større skjermer (der
+    // numberButtonFontSize vokser mot 32.sp) ble sifferknappene synlig mindre enn
+    // naboene sine i samme rad.
+    baseFontSize: TextUnit = 24.sp
 ) {
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
@@ -1476,7 +1497,7 @@ fun NumberButton(
         // den passer i stedet for å gjette en fast størrelse - se AutoShrinkText.
         AutoShrinkText(
             text = number.toString(),
-            baseFontSize = 24.sp,
+            baseFontSize = baseFontSize,
             fontWeight = FontWeight.Black,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             color = Color.White

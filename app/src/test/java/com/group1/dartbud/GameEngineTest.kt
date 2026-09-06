@@ -207,6 +207,25 @@ class GameEngineTest {
         assertEquals(1, s.player1.dartsThrown)
     }
 
+    @Test
+    fun `tur uten apning ved double in telles likevel som spilt runde`() {
+        // Spilleren rekker aldri å åpne (tre ikke-doble kast) - turen skal likevel telle
+        // som en spilt runde, ellers kommer roundsPlayed og rundehistorikken ut av synk
+        // med det faktiske antallet turer.
+        var s = start()
+        s = doubleIn.applyThrow(s, 5, 1) // enkel 5, teller ikke
+        s = doubleIn.applyThrow(s, 5, 1) // enkel 5, teller ikke
+        s = doubleIn.applyThrow(s, 5, 1) // enkel 5, turen er over
+
+        assertEquals(501, s.player1.score)
+        assertEquals(3, s.player1.dartsThrown)
+        assertEquals(1, s.player1.roundsPlayed)
+        assertEquals(listOf(0), s.player1RoundHistory)
+        assertEquals(0, s.player1.lastThrow)
+        // Turen er faktisk over - det er spiller 2 sin tur nå
+        assertEquals(2, s.currentPlayer)
+    }
+
     // ---------- undo ----------
 
     @Test

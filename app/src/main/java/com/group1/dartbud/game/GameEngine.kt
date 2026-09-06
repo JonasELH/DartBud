@@ -317,9 +317,30 @@ class GameEngine(
                 GameMessage("NO SCORE", "You must hit a double to start scoring (double in).")
             } else null
 
+            // Turen er ferdig hvis dette var tredje kast - selv om spilleren aldri åpnet
+            // med en double. Denne turen telte likevel som spilt (0 poeng), og skal
+            // oppdatere roundsPlayed/rundehistorikken på samme måte som turnIsOver-blokken
+            // lenger ned gjør for en vanlig tur. Uten dette kom roundsPlayed og
+            // rundehistorikkens lengde ut av synk med det faktiske antallet turer spilt.
+            val turnIsOver = next.currentThrow == 3
+            if (turnIsOver) {
+                updated = updated.copy(
+                    lastThrow = 0,
+                    roundsPlayed = updated.roundsPlayed + 1
+                )
+            }
             updated = updated.copy(average = recalculateAverage(updated))
             next = withPlayer(next, updated).copy(message = message)
-            return if (next.currentThrow == 3) endTurn(next) else next.copy(currentThrow = next.currentThrow + 1)
+
+            if (turnIsOver) {
+                next = if (next.currentPlayer == 1) {
+                    next.copy(player1RoundHistory = next.player1RoundHistory + 0)
+                } else {
+                    next.copy(player2RoundHistory = next.player2RoundHistory + 0)
+                }
+            }
+
+            return if (turnIsOver) endTurn(next) else next.copy(currentThrow = next.currentThrow + 1)
         }
 
         val bust = checkBust(newScore, isDouble)
